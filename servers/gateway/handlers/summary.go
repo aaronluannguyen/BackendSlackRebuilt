@@ -3,6 +3,7 @@ package handlers
 import (
 	"io"
 	"net/http"
+	"path"
 )
 
 //PreviewImage represents a preview image for a page
@@ -27,6 +28,8 @@ type PageSummary struct {
 	Icon        *PreviewImage   `json:"icon,omitempty"`
 	Images      []*PreviewImage `json:"images,omitempty"`
 }
+
+const headerCORS = "Access-Control-Allow-Origin"
 
 //SummaryHandler handles requests for the page summary API.
 //This API expects one query string parameter named `url`,
@@ -56,6 +59,15 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	https://golang.org/pkg/net/http/#Error
 	https://golang.org/pkg/encoding/json/#NewEncoder
 	*/
+
+	w.Header().Add(headerCORS, "*")
+
+	url := path.Base(r.URL.Path)
+	if len(url) == 0 {
+		http.Error(w, "Status Bad Request Error", http.StatusBadRequest)
+	}
+
+	fetchHTML(url)
 }
 
 //fetchHTML fetches `pageURL` and returns the body stream or an error.
