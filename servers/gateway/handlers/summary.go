@@ -67,7 +67,9 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Status Bad Request Error", http.StatusBadRequest)
 	}
 
-	fetchHTML(url)
+	rc, err := fetchHTML(url)
+
+	extractSummary(url, rc)
 }
 
 //fetchHTML fetches `pageURL` and returns the body stream or an error.
