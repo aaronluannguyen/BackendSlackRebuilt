@@ -4,6 +4,8 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"fmt"
+	"strings"
 )
 
 //PreviewImage represents a preview image for a page
@@ -64,12 +66,15 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 
 	url := path.Base(r.URL.Path)
 	if len(url) == 0 {
-		http.Error(w, "Status Bad Request Error", http.StatusBadRequest)
+		fmt.Errorf("status bad request error: %v", http.StatusBadRequest)
+		// !!! Check to see which way of error handling is preferred !!!
+		// http.Error(w, "Status Bad Request Error", http.StatusBadRequest)
 	}
 
 	rc, err := fetchHTML(url)
-
-	extractSummary(url, rc)
+	if err == nil {
+		extractSummary(url, rc)
+	}
 }
 
 //fetchHTML fetches `pageURL` and returns the body stream or an error.
@@ -90,7 +95,19 @@ func fetchHTML(pageURL string) (io.ReadCloser, error) {
 	Helpful Links:
 	https://golang.org/pkg/net/http/#Get
 	*/
-	return nil, nil
+
+	response, err := http.Get(pageURL)
+	if err != nil {
+		return nil, fmt.Errorf("bad request error: %d", err)
+	}
+	if response.StatusCode >= 400 {
+		return nil, fmt.Errorf("error fetching URL: %v", err)
+	}
+	contentType := response.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "text/html") {
+		return nil, fmt.Errorf("response content type was %s not text/html", contentType)
+	}
+	return response.Body, nil
 }
 
 //extractSummary tokenizes the `htmlStream` and populates a PageSummary
