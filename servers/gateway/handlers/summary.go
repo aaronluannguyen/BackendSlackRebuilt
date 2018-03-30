@@ -6,6 +6,7 @@ import (
 	"path"
 	"fmt"
 	"strings"
+	"golang.org/x/net/html"
 )
 
 //PreviewImage represents a preview image for a page
@@ -127,5 +128,17 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 	https://developers.facebook.com/docs/reference/opengraph/
 	https://golang.org/pkg/net/url/#URL.ResolveReference
 	*/
-	return nil, nil
+
+	tokenizer := html.NewTokenizer(htmlStream)
+	for {
+		tokenType := tokenizer.Next()
+
+		// Error handling
+		if tokenType == html.ErrorToken {
+			fmt.Errorf("error tokenizing HTML: %v", tokenizer.Err())
+			return nil, tokenizer.Err()
+		}
+
+
+	}
 }
