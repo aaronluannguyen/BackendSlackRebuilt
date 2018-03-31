@@ -187,6 +187,8 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 							structKey = "Author"
 						} else if a.Val == "keywords" {
 							structKey = "Keywords"
+						} else if pgSum.Description == "" && a.Val == "description" {
+							structKey = "Description"
 						}
 					} else if structKey != "" && a.Key == "content" {
 						if structKey == "Images" {
@@ -222,6 +224,11 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 					} else if isIcon && a.Key == "href" {
 						pgSum.Icon.URL = a.Val
 					}
+				}
+			} else if pgSum.Title == "" && "title" == token.Data {
+				tokenType = tokenizer.Next()
+				if tokenType == html.TextToken {
+					pgSum.Title = tokenizer.Token().Data
 				}
 			}
 		}
