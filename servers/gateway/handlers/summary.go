@@ -129,6 +129,8 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 	https://golang.org/pkg/net/url/#URL.ResolveReference
 	*/
 
+	tokenMap := map[string]string{}
+
 	tokenizer := html.NewTokenizer(htmlStream)
 	for {
 		tokenType := tokenizer.Next()
@@ -139,6 +141,47 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 			return nil, tokenizer.Err()
 		}
 
+		if tokenType == html.EndTagToken {
+			token := tokenizer.Token()
+			if "/head" == token.Data {
+				break
+			}
+		}
 
+		if tokenType == html.StartTagToken {
+			token := tokenizer.Token()
+			if "meta" == token.Data {
+				// Looping over all attributes in "meta"
+				for _, a := range token.Attr {
+					if a.Key == "property" {
+						if a.Val == "og:type" {
+
+						} else if a.Val == "og:url" {
+
+						} else if a.Val == "title" {
+
+						} else if a.Val == "og:site_name" {
+
+						} else if a.Val == "og:description" {
+
+						} else if a.Val == "og:image" {
+
+						}
+					} else if a.Key == "name" {
+						if a.Val == "author" {
+
+						} else if a.Val == "keywords" {
+
+						}
+					}
+				}
+			} else if "link" == token.Data {
+				for _, a := range token.Attr {
+					if a.Key == "rel" && a.Val == "icon" {
+
+					}
+				}
+			}
+		}
 	}
 }
