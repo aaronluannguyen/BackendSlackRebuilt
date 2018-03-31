@@ -131,6 +131,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 
 	tokenMap := map[string]string{}
 
+
 	tokenizer := html.NewTokenizer(htmlStream)
 	for {
 		tokenType := tokenizer.Next()
@@ -151,29 +152,33 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 		if tokenType == html.StartTagToken {
 			token := tokenizer.Token()
 			if "meta" == token.Data {
+				structKey := ""
 				// Looping over all attributes in "meta"
 				for _, a := range token.Attr {
 					if a.Key == "property" {
 						if a.Val == "og:type" {
-
+							structKey = "Type"
 						} else if a.Val == "og:url" {
-
+							structKey = "URL"
 						} else if a.Val == "title" {
-
+							structKey = "Title"
 						} else if a.Val == "og:site_name" {
-
+							structKey = "SiteName"
 						} else if a.Val == "og:description" {
-
+							structKey = "Description"
 						} else if a.Val == "og:image" {
-
+							structKey = "Images"
 						}
 					} else if a.Key == "name" {
 						if a.Val == "author" {
-
+							structKey = "Author"
 						} else if a.Val == "keywords" {
-
+							structKey = "Keywords"
 						}
-					}
+					} else if structKey != "" && a.Key == "content" {
+						tokenMap[structKey] = a.Val
+						structKey = ""
+					} else if structKey != "" &&
 				}
 			} else if "link" == token.Data {
 				for _, a := range token.Attr {
