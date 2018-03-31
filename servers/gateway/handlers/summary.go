@@ -192,7 +192,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 						}
 					} else if structKey != "" && a.Key == "content" {
 						if structKey == "Images" {
-							pgSum.Images.append(pgSum.Images, PreviewImage{})
+							pgSum.Images = append(pgSum.Images, new(PreviewImage))
 							pgSum.Images[len(pgSum.Images)].URL = a.Val
 						} else if structKey == "Images:secure_url" {
 							pgSum.Images[len(pgSum.Images)].SecureURL = a.Val
