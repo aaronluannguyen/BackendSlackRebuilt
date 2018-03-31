@@ -210,14 +210,17 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 							pgSum.Images[len(pgSum.Images)].Alt = a.Val
 						} else {
 							pgSum.structKey = a.Val
-							structKey = ""
 						}
+						structKey = ""
 					}
 				}
 			} else if "link" == token.Data {
+				isIcon := false
 				for _, a := range token.Attr {
 					if a.Key == "rel" && a.Val == "icon" {
-
+						isIcon = true
+					} else if isIcon && a.Key == "href" {
+						pgSum.Icon.URL = a.Val
 					}
 				}
 			}
