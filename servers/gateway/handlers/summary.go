@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"golang.org/x/net/html"
+	"strconv"
 )
 
 //PreviewImage represents a preview image for a page
@@ -129,8 +130,8 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 	https://golang.org/pkg/net/url/#URL.ResolveReference
 	*/
 
-	tokenMap := map[string]string{}
-
+	pgSum := new(PageSummary)
+	pgSum.Images = []*PreviewImage{}
 
 	tokenizer := html.NewTokenizer(htmlStream)
 	for {
@@ -168,6 +169,18 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 							structKey = "Description"
 						} else if a.Val == "og:image" {
 							structKey = "Images"
+						} else if a.Val == "og:image:url" {
+							structKey = "Images:url"
+						} else if a.Val == "og:image:secure_url" {
+							structKey = "Images:secure_url"
+						} else if a.Val == "og:image:type" {
+							structKey = "Images:type"
+						} else if a.Val == "og:image:width" {
+							structKey = "Images:width"
+						} else if a.Val == "og:image:height" {
+							structKey = "Images:height"
+						} else if a.Val == "og:image:alt" {
+							structKey = "Images:alt"
 						}
 					} else if a.Key == "name" {
 						if a.Val == "author" {
@@ -176,9 +189,31 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 							structKey = "Keywords"
 						}
 					} else if structKey != "" && a.Key == "content" {
-						tokenMap[structKey] = a.Val
-						structKey = ""
-					} else if structKey != "" &&
+						if structKey == "Images" {
+							pgSum.Images.append(pgSum.Images, PreviewImage{})
+						} else if structKey == "Images:url" {
+							pgSum.Images[len(pgSum.Images)].URL = a.Val
+						} else if structKey == "Images:secure_url" {
+							pgSum.Images[len(pgSum.Images)].SecureURL = a.Val
+						} else if structKey == "Images:type" {
+							pgSum.Images[len(pgSum.Images)].Type = a.Val
+						} else if structKey == "Images:width" {
+							width, err := strconv.Atoi(a.Val)
+							if err != nil {
+								pgSum.Images[len(pgSum.Images)].Width = width
+							}
+						} else if structKey == "Images:height" {
+							height, err := strconv.Atoi(a.Val)
+							if err != nil {
+								pgSum.Images[len(pgSum.Images)].Height = height
+							}
+						} else if structKey == "Images:alt" {
+							pgSum.Images[len(pgSum.Images)].Alt = a.Val
+						} else {
+							pgSum.structKey = a.Val
+							structKey = ""
+						}
+					}
 				}
 			} else if "link" == token.Data {
 				for _, a := range token.Attr {
@@ -189,4 +224,5 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 			}
 		}
 	}
+	return pgSum, nil
 }
