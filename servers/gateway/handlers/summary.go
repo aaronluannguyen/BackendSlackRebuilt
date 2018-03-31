@@ -8,6 +8,7 @@ import (
 	"strings"
 	"golang.org/x/net/html"
 	"strconv"
+	"go/token"
 )
 
 //PreviewImage represents a preview image for a page
@@ -132,6 +133,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 
 	pgSum := new(PageSummary)
 	pgSum.Images = []*PreviewImage{}
+	structMap := map[string]string{}
 
 	tokenizer := html.NewTokenizer(htmlStream)
 	for {
@@ -155,6 +157,10 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 			if "meta" == token.Data {
 				structKey := ""
 				// Looping over all attributes in "meta"
+				k, v := handleAttr(token)
+				structMap[k] = v
+
+
 				for _, a := range token.Attr {
 					if a.Key == "property" {
 						if a.Val == "og:type" {
@@ -218,20 +224,55 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 				}
 			} else if "link" == token.Data {
 				isIcon := false
+				hrefVal := ""
 				for _, a := range token.Attr {
 					if a.Key == "rel" && a.Val == "icon" {
 						isIcon = true
-					} else if isIcon && a.Key == "href" {
-						pgSum.Icon.URL = a.Val
+					} else if a.Key == "href" {
+						hrefVal = a.Val
 					}
 				}
-			} else if pgSum.Title == "" && "title" == token.Data {
+				if isIcon {
+					pgSum.Icon.URL = hrefVal
+				}
+			} else if "title" == token.Data {
 				tokenType = tokenizer.Next()
 				if tokenType == html.TextToken {
-					pgSum.Title = tokenizer.Token().Data
+					structMap["Title"] = tokenizer.Token().Data
 				}
 			}
 		}
 	}
 	return pgSum, nil
+}
+
+func handleAttr(token html.Token) (property string, content string) {
+	prop := ""
+	cont := ""
+	for _, a := range token.Attr {
+		if !strings.HasPrefix(a.Val, "og:image") {
+			if a.Key == "property" {
+				if a.Val == "og:type" {
+					prop = "Type"
+				} else if a.Val == "og:url" {
+					prop = "URL"
+				} else if a.Val == "title" {
+					prop = "OG:Title"
+				} else if a.Val == "og:site_name" {
+					prop = "SiteName"
+				} else if a.Val == "og:description" {
+					prop = "OG:Description"
+				} else if a.Val == "author" {
+					prop = "Author"
+				} else if a.Val == "keywords" {
+					prop = "Keywords"
+				} else if a.Val == "description" {
+					prop = "Description"
+				}
+			} else if a.Key == "content" {
+				content = a.Val
+			}
+		}
+	}
+	return prop, cont
 }
