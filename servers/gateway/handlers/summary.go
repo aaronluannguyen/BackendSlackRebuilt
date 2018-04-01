@@ -8,7 +8,6 @@ import (
 	"strings"
 	"golang.org/x/net/html"
 	"strconv"
-	"go/token"
 )
 
 //PreviewImage represents a preview image for a page
@@ -159,67 +158,18 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 		if tokenType == html.StartTagToken {
 			token := tokenizer.Token()
 			if "meta" == token.Data {
-				structKey := ""
-				// Looping over all attributes in "meta"
-				k, v := handleAttr(token)
-				structMap[k] = v
-
-
-				for _, a := range token.Attr {
-					if a.Key == "property" {
-						if a.Val == "og:image" {
-							structKey = "Images"
-						} else if a.Val == "og:image:url" {
-							structKey = "Images:url"
-						} else if a.Val == "og:image:secure_url" {
-							structKey = "Images:secure_url"
-						} else if a.Val == "og:image:type" {
-							structKey = "Images:type"
-						} else if a.Val == "og:image:width" {
-							structKey = "Images:width"
-						} else if a.Val == "og:image:height" {
-							structKey = "Images:height"
-						} else if a.Val == "og:image:alt" {
-							structKey = "Images:alt"
-						}
-					} else if structKey != "" && a.Key == "content" {
-						if structKey == "Images" {
-							pgSum.Images = append(pgSum.Images, new(PreviewImage))
-							pgSum.Images[len(pgSum.Images)].URL = a.Val
-						} else if structKey == "Images:secure_url" {
-							pgSum.Images[len(pgSum.Images)].SecureURL = a.Val
-						} else if structKey == "Images:type" {
-							pgSum.Images[len(pgSum.Images)].Type = a.Val
-						} else if structKey == "Images:width" {
-							width, err := strconv.Atoi(a.Val)
-							if err != nil {
-								pgSum.Images[len(pgSum.Images)].Width = width
-							}
-						} else if structKey == "Images:height" {
-							height, err := strconv.Atoi(a.Val)
-							if err != nil {
-								pgSum.Images[len(pgSum.Images)].Height = height
-							}
-						} else if structKey == "Images:alt" {
-							pgSum.Images[len(pgSum.Images)].Alt = a.Val
-						} else {
-							pgSum.structKey = a.Val
-						}
-						structKey = ""
-					}
+				k, v := handleAttr(token, pgSum.Images)
+				if k != "" && v != "" {
+					structMap[k] = v
 				}
 			} else if "link" == token.Data {
 				isIcon := false
-				hrefVal := ""
 				for _, a := range token.Attr {
 					if a.Key == "rel" && a.Val == "icon" {
 						isIcon = true
-					} else if a.Key == "href" {
-						hrefVal = a.Val
+					} else if isIcon && a.Key == "href" {
+						pgSum.Icon.URL = a.Val
 					}
-				}
-				if isIcon {
-					pgSum.Icon.URL = hrefVal
 				}
 			} else if "title" == token.Data {
 				tokenType = tokenizer.Next()
@@ -229,12 +179,14 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 			}
 		}
 	}
+
 	return pgSum, nil
 }
 
-func handleAttr(token html.Token) (property string, content string) {
+func handleAttr(token html.Token, images []*PreviewImage) (property string, content string) {
 	prop := ""
 	cont := ""
+	imgAttr := ""
 	for _, a := range token.Attr {
 		if !strings.HasPrefix(a.Val, "og:image") {
 			if a.Key == "property" {
@@ -257,10 +209,93 @@ func handleAttr(token html.Token) (property string, content string) {
 				}
 			} else if a.Key == "content" {
 				content = a.Val
+				// HANDLE KEYWORDS SLICE
 			}
-		} else {
-
+		} else if strings.HasPrefix(a.Val, "og:image") {
+			if a.Key == "property" {
+				if a.Val == "og:image" {
+					imgAttr = "Image"
+				} else if a.Val == "og:image:url" {
+					imgAttr = "Image:URL"
+				} else if a.Val == "og:image:secure_url" {
+					imgAttr = "Image:Secure_URL"
+				} else if a.Val == "og:image:type" {
+					imgAttr = "Image:Type"
+				} else if a.Val == "og:image:width" {
+					imgAttr = "Image:Width"
+				} else if a.Val == "og:image:height" {
+					imgAttr = "Image:Height"
+				} else if a.Val == "og:image:alt" {
+					imgAttr = "Image:Alt"
+				}
+			} else if a.Key == "content" {
+				if imgAttr == "Image" {
+					images = append(images, new(PreviewImage))
+					images[len(images)].URL = a.Val
+				} else if imgAttr == "Image:URL" {
+					if images[len(images)].URL == "" {
+						images[len(images)].URL = a.Val
+					}
+				} else if imgAttr == "Image:Secure_URL" {
+					images[len(images)].SecureURL = a.Val
+				} else if imgAttr == "Image:Type" {
+					images[len(images)].Type = a.Val
+				} else if imgAttr == "Image:Width" {
+					width, err := strconv.Atoi(a.Val)
+					if err != nil {
+						images[len(images)].Width = width
+					}
+				} else if imgAttr == "Image:Height" {
+					height, err := strconv.Atoi(a.Val)
+					if err != nil {
+						images[len(images)].Height = height
+					}
+				} else if imgAttr == "Image:Alt" {
+					images[len(images)].Alt = a.Val
+				}
+ 			}
 		}
 	}
 	return prop, cont
+}
+
+func updatePgSUm(summary *PageSummary, structMap  map[string]string) {
+	value, exists := structMap["Type"]
+	if exists {
+		summary.Type = value
+	}
+	value, exists = structMap["URL"]
+	if exists {
+		summary.URL = value
+	}
+	value, exists = structMap["OG:Title"]
+	if exists {
+		summary.Title = value
+	} else {
+		value, exists = structMap["Title"]
+		if exists {
+			summary.Title = value
+		}
+	}
+	value, exists = structMap["SiteName"]
+	if exists {
+		summary.SiteName = value
+	}
+	value, exists = structMap["OG:Description"]
+	if exists {
+		summary.Description = value
+	} else {
+		value, exists = structMap["Description"]
+		if exists {
+			summary.Description = value
+		}
+	}
+	value, exists = structMap["Author"]
+	if exists {
+		summary.Author = value
+	}
+	value, exists = structMap["Keywords"]
+	if exists {
+		// HANDLE KEYWORDS SLICE
+	}
 }
