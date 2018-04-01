@@ -100,6 +100,10 @@ func fetchHTML(pageURL string) (io.ReadCloser, error) {
 	*/
 
 	response, err := http.Get(pageURL)
+
+	// Make sure response body gets closed
+	defer response.Body.Close()
+
 	if err != nil {
 		return nil, fmt.Errorf("bad request error: %d", err)
 	}
@@ -163,17 +167,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 
 				for _, a := range token.Attr {
 					if a.Key == "property" {
-						if a.Val == "og:type" {
-							structKey = "Type"
-						} else if a.Val == "og:url" {
-							structKey = "URL"
-						} else if a.Val == "title" {
-							structKey = "Title"
-						} else if a.Val == "og:site_name" {
-							structKey = "SiteName"
-						} else if a.Val == "og:description" {
-							structKey = "Description"
-						} else if a.Val == "og:image" {
+						if a.Val == "og:image" {
 							structKey = "Images"
 						} else if a.Val == "og:image:url" {
 							structKey = "Images:url"
@@ -187,14 +181,6 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 							structKey = "Images:height"
 						} else if a.Val == "og:image:alt" {
 							structKey = "Images:alt"
-						}
-					} else if a.Key == "name" {
-						if a.Val == "author" {
-							structKey = "Author"
-						} else if a.Val == "keywords" {
-							structKey = "Keywords"
-						} else if pgSum.Description == "" && a.Val == "description" {
-							structKey = "Description"
 						}
 					} else if structKey != "" && a.Key == "content" {
 						if structKey == "Images" {
@@ -272,6 +258,8 @@ func handleAttr(token html.Token) (property string, content string) {
 			} else if a.Key == "content" {
 				content = a.Val
 			}
+		} else {
+
 		}
 	}
 	return prop, cont
