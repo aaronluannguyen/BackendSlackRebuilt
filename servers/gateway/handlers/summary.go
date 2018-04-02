@@ -8,6 +8,7 @@ import (
 	"strings"
 	"golang.org/x/net/html"
 	"strconv"
+	url2 "net/url"
 )
 
 //PreviewImage represents a preview image for a page
@@ -259,14 +260,19 @@ func handleAttr(token html.Token, images []*PreviewImage) (property string, cont
 	return prop, cont
 }
 
-func updatePgSUm(summary *PageSummary, structMap  map[string]string) {
+func updatePgSUm(summary *PageSummary, structMap  map[string]string) error {
 	value, exists := structMap["Type"]
 	if exists {
 		summary.Type = value
 	}
 	value, exists = structMap["URL"]
 	if exists {
-		summary.URL = value
+		url, err := url2.Parse(value)
+		if err != nil {
+			return err
+		}
+		url = url.ResolveReference(url)
+		summary.URL = url.String()
 	}
 	value, exists = structMap["OG:Title"]
 	if exists {
@@ -298,4 +304,5 @@ func updatePgSUm(summary *PageSummary, structMap  map[string]string) {
 	if exists {
 		// HANDLE KEYWORDS SLICE
 	}
+	return nil
 }
