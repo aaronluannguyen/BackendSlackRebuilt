@@ -181,6 +181,11 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 		}
 	}
 
+	err := updatePgSUm(pgSum, structMap)
+	if err != nil {
+		fmt.Errorf("error updating page summary: %v", err)
+	}
+
 	return pgSum, nil
 }
 
@@ -259,7 +264,7 @@ func handleAttr(token html.Token, images []*PreviewImage) (property string, cont
 	return prop, cont
 }
 
-func updatePgSUm(summary *PageSummary, structMap  map[string]string) error {
+func updatePgSUm(summary *PageSummary, structMap map[string]string) error {
 	value, exists := structMap["Type"]
 	if exists {
 		summary.Type = value
