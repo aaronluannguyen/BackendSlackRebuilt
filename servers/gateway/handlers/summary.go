@@ -210,7 +210,6 @@ func handleAttr(token html.Token, images []*PreviewImage) (property string, cont
 				}
 			} else if a.Key == "content" {
 				content = a.Val
-				// HANDLE KEYWORDS SLICE
 			}
 		} else if strings.HasPrefix(a.Val, "og:image") {
 			if a.Key == "property" {
@@ -302,7 +301,11 @@ func updatePgSUm(summary *PageSummary, structMap  map[string]string) error {
 	}
 	value, exists = structMap["Keywords"]
 	if exists {
-		// HANDLE KEYWORDS SLICE
+		slicedKW := strings.Split(value, ",")
+		for _, word := range slicedKW {
+			word = strings.TrimSpace(word)
+		}
+		summary.Keywords = slicedKW
 	}
 	return nil
 }
