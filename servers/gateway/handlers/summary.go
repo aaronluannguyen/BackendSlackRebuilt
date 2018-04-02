@@ -77,6 +77,8 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	rc, err := fetchHTML(url)
 	if err == nil {
 		extractSummary(url, rc)
+	} else {
+		fmt.Errorf("extracting summary error: %v", err)
 	}
 }
 
