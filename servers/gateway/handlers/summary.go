@@ -137,6 +137,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 
 	structMap := map[string]string{}
 	var imageArray []*PreviewImage
+	var iconImg *PreviewImage
 
 	tokenizer := html.NewTokenizer(htmlStream)
 	for {
@@ -162,26 +163,52 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 		if tokenType == html.StartTagToken || tokenType == html.SelfClosingTagToken {
 			token := tokenizer.Token()
 			if "meta" == token.Data {
-				k, v, err := handleAttr(token, pageURL, imageArray)
+				k, v, imgs, err := handleAttr(token, pageURL)
 				if err != nil {
 					return nil, err
 				}
 				if k != "" && v != "" {
 					structMap[k] = v
 				}
+				imageArray = imgs
 			} else if "link" == token.Data {
-				//FIX ICON HANDLER
 				isIcon := false
 				iconUrl := ""
+				iconType := ""
+				iconWidth := 0
+				iconHeight := 0
+				iconAlt := ""
 				for _, a := range token.Attr {
 					if a.Key == "rel" && a.Val == "icon" {
 						isIcon = true
 					} else if a.Key == "href" {
 						iconUrl = a.Val
+					} else if a.Key == "type" {
+						iconType = a.Val
+					} else if a.Key == "sizes" {
+						if a.Val != "any" {
+							sizes := strings.Split(a.Val, "x")
+							height, err := strconv.Atoi(sizes[0])
+							if err != nil {
+								return nil, err
+							}
+							iconHeight = height
+							width, err := strconv.Atoi(sizes[1])
+							if err != nil {
+								return nil, err
+							}
+							iconWidth = width
+						}
+					} else if a.Key == "alt" {
+						iconAlt = a.Val
 					}
 				}
 				if isIcon {
-					structMap["IconURL"] = iconUrl
+					iconImg.URL = iconUrl
+					iconImg.Type = iconType
+					iconImg.Height = iconHeight
+					iconImg.Width = iconWidth
+					iconImg.Alt = iconAlt
 				}
 			} else if "title" == token.Data {
 				tokenType = tokenizer.Next()
@@ -197,17 +224,17 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 		fmt.Errorf("error updating page summary: %v", err)
 		return nil, err
 	}
-	for _, img := range imageArray {
-		summary.Images = append(summary.Images, img)
-	}
+	summary.Icon = iconImg
+	summary.Images = imageArray
 
 	return summary, nil
 }
 
-func handleAttr(token html.Token, pageUrl string, images []*PreviewImage) (string, string, error) {
+func handleAttr(token html.Token, pageUrl string) (string, string, []*PreviewImage, error) {
 	prop := ""
 	cont := ""
 	imgAttr := ""
+	var images []*PreviewImage
 	for _, a := range token.Attr {
 		if !strings.HasPrefix(a.Val, "og:image") {
 			if a.Key == "property" {
@@ -231,14 +258,41 @@ func handleAttr(token html.Token, pageUrl string, images []*PreviewImage) (strin
 					prop = "Description"
 				}
 			} else if a.Key == "content" {
-				cont = a.Val
+				if imgAttr == "Image" {
+					images = append(images, &PreviewImage{})
+					absURL, err := absoluteUrl(pageUrl, a.Val)
+					if err != nil {
+						return "", "", nil, err
+					}
+					images[len(images) - 1].URL = absURL
+				} else if imgAttr == "Image:Secure_URL" {
+					absURL, err := absoluteUrl(pageUrl, a.Val)
+					if err != nil {
+						return "", "", nil, err
+					}
+					images[len(images) - 1].SecureURL = absURL
+				} else if imgAttr == "Image:Type" {
+					images[len(images) - 1].Type = a.Val
+				} else if imgAttr == "Image:Width" {
+					width, err := strconv.Atoi(a.Val)
+					if err != nil {
+						images[len(images) - 1].Width = width
+					}
+				} else if imgAttr == "Image:Height" {
+					height, err := strconv.Atoi(a.Val)
+					if err != nil {
+						images[len(images) - 1].Height = height
+					}
+				} else if imgAttr == "Image:Alt" {
+					images[len(images) - 1].Alt = a.Val
+				} else {
+					cont = a.Val
+				}
 			}
 		} else if strings.HasPrefix(a.Val, "og:image") {
 			if a.Key == "property" {
 				if a.Val == "og:image" {
 					imgAttr = "Image"
-				} else if a.Val == "og:image:url" {
-					imgAttr = "Image:URL"
 				} else if a.Val == "og:image:secure_url" {
 					imgAttr = "Image:Secure_URL"
 				} else if a.Val == "og:image:type" {
@@ -250,41 +304,10 @@ func handleAttr(token html.Token, pageUrl string, images []*PreviewImage) (strin
 				} else if a.Val == "og:image:alt" {
 					imgAttr = "Image:Alt"
 				}
-			} else if a.Key == "content" {
-				if imgAttr == "Image" {
-					images = append(images, new(PreviewImage))
-					images[len(images)].URL = a.Val
-				} else if imgAttr == "Image:URL" {
-					absURL, err := absoluteUrl(pageUrl, a.Val)
-					if err != nil {
-						return "", "", err
-					}
-					images[len(images)].URL = absURL
-				} else if imgAttr == "Image:Secure_URL" {
-					absURL, err := absoluteUrl(pageUrl, a.Val)
-					if err != nil {
-						return "", "", err
-					}
-					images[len(images)].SecureURL = absURL
-				} else if imgAttr == "Image:Type" {
-					images[len(images)].Type = a.Val
-				} else if imgAttr == "Image:Width" {
-					width, err := strconv.Atoi(a.Val)
-					if err != nil {
-						images[len(images)].Width = width
-					}
-				} else if imgAttr == "Image:Height" {
-					height, err := strconv.Atoi(a.Val)
-					if err != nil {
-						images[len(images)].Height = height
-					}
-				} else if imgAttr == "Image:Alt" {
-					images[len(images)].Alt = a.Val
-				}
- 			}
+			}
 		}
 	}
-	return prop, cont, nil
+	return prop, cont, images, nil
 }
 
 func updatePgSUm(structMap map[string]string,) (*PageSummary, error) {
@@ -315,16 +338,16 @@ func updatePgSUm(structMap map[string]string,) (*PageSummary, error) {
 	return pgSum, nil
 }
 
-func absoluteUrl (base string, url string) (string, error) {
-	urlAsURL, err := url2.Parse(url)
+func absoluteUrl (base string, rel string) (string, error) {
+	relUrl, err := url2.Parse(rel)
 	if err != nil {
 		return "", err
 	}
 
-	pgUrlAsURL, err := url2.Parse(base)
+	baseUrl, err := url2.Parse(base)
 	if err != nil {
 		return "", err
 	}
-	absUrl := pgUrlAsURL.ResolveReference(urlAsURL).String()
+	absUrl := baseUrl.ResolveReference(relUrl).String()
 	return absUrl, nil
 }
