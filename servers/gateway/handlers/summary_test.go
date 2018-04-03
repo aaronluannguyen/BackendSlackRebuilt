@@ -159,22 +159,22 @@ func TestExtractSummary(t *testing.T) {
 				Title: "HTML Page Title",
 			},
 		},
-		//{
-		//	"HTML Description",
-		//	`Make sure you get the page description from the <meta name="author" content="..."> tag if no Open Graph description is available`,
-		//	pagePrologue + `<meta name="description" content="test description">` + pageEiplogue,
-		//	&PageSummary{
-		//		Description: "test description",
-		//	},
-		//},
-		//{
-		//	"HTML Author",
-		//	`Make sure you get the page author from the <meta name="author" content="..."> tag`,
-		//	pagePrologue + `<meta name="author" content="test author">` + pageEiplogue,
-		//	&PageSummary{
-		//		Author: "test author",
-		//	},
-		//},
+		{
+			"HTML Description",
+			`Make sure you get the page description from the <meta name="author" content="..."> tag if no Open Graph description is available`,
+			pagePrologue + `<meta name="description" content="test description">` + pageEiplogue,
+			&PageSummary{
+				Description: "test description",
+			},
+		},
+		{
+			"HTML Author",
+			`Make sure you get the page author from the <meta name="author" content="..."> tag`,
+			pagePrologue + `<meta name="author" content="test author">` + pageEiplogue,
+			&PageSummary{
+				Author: "test author",
+			},
+		},
 		//{
 		//	"HTML Keywords With Spaces",
 		//	`Make sure you get the page keywords from the <meta name="keywords" content="..."> tag`,
@@ -183,14 +183,14 @@ func TestExtractSummary(t *testing.T) {
 		//		Keywords: []string{"one", "two", "three"},
 		//	},
 		//},
-		//{
-		//	"HTML Keywords With No Spaces",
-		//	`Make sure you get the page keywords from the <meta name="keywords" content="..."> tag`,
-		//	pagePrologue + `<meta name="keywords" content="one,two,three">` + pageEiplogue,
-		//	&PageSummary{
-		//		Keywords: []string{"one", "two", "three"},
-		//	},
-		//},
+		{
+			"HTML Keywords With No Spaces",
+			`Make sure you get the page keywords from the <meta name="keywords" content="..."> tag`,
+			pagePrologue + `<meta name="keywords" content="one,two,three">` + pageEiplogue,
+			&PageSummary{
+				Keywords: []string{"one", "two", "three"},
+			},
+		},
 		//{
 		//	"HTML Icon",
 		//	`Make sure you get the page icon from the <link rel="icon" href="..."> tag`,

@@ -221,7 +221,9 @@ func handleAttr(token html.Token, pageUrl string, images []*PreviewImage) (strin
 					prop = "SiteName"
 				} else if a.Val == "og:description" {
 					prop = "OG:Description"
-				} else if a.Val == "author" {
+				}
+			} else if a.Key == "name" {
+				if a.Val == "author" {
 					prop = "Author"
 				} else if a.Val == "keywords" {
 					prop = "Keywords"
