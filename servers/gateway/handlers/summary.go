@@ -306,8 +306,8 @@ func updatePgSUm(structMap map[string]string,) (*PageSummary, error) {
 
 	slicedKW := strings.Split(structMap["Keywords"], ",")
 	if len(slicedKW) > 1 {
-		for _, word := range slicedKW {
-			word = strings.TrimSpace(word)
+		for i, word := range slicedKW {
+			slicedKW[i] = strings.TrimSpace(word)
 		}
 		pgSum.Keywords = slicedKW
 	}

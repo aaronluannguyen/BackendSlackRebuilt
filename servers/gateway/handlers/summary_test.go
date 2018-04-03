@@ -175,14 +175,14 @@ func TestExtractSummary(t *testing.T) {
 				Author: "test author",
 			},
 		},
-		//{
-		//	"HTML Keywords With Spaces",
-		//	`Make sure you get the page keywords from the <meta name="keywords" content="..."> tag`,
-		//	pagePrologue + `<meta name="keywords" content="one, two, three">` + pageEiplogue,
-		//	&PageSummary{
-		//		Keywords: []string{"one", "two", "three"},
-		//	},
-		//},
+		{
+			"HTML Keywords With Spaces",
+			`Make sure you get the page keywords from the <meta name="keywords" content="..."> tag`,
+			pagePrologue + `<meta name="keywords" content="one, two, three">` + pageEiplogue,
+			&PageSummary{
+				Keywords: []string{"one", "two", "three"},
+			},
+		},
 		{
 			"HTML Keywords With No Spaces",
 			`Make sure you get the page keywords from the <meta name="keywords" content="..."> tag`,
