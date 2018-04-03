@@ -143,13 +143,18 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 		tokenType := tokenizer.Next()
 
 		if tokenType == html.ErrorToken {
-			fmt.Errorf("error tokenizing HTML: %v", tokenizer.Err())
-			return nil, tokenizer.Err()
+			err := tokenizer.Err()
+			if err == io.EOF {
+				break
+			} else {
+				fmt.Errorf("error tokenizing HTML: %v", err)
+				return nil, err
+			}
 		}
 
 		if tokenType == html.EndTagToken {
 			token := tokenizer.Token()
-			if "/head" == token.Data {
+			if "head" == token.Data {
 				break
 			}
 		}
@@ -157,7 +162,10 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 		if tokenType == html.StartTagToken {
 			token := tokenizer.Token()
 			if "meta" == token.Data {
-				k, v, imgs := handleAttr(token)
+				k, v, imgs, err := handleAttr(token, pageURL)
+				if err != nil {
+					return nil, err
+				}
 				if k != "" && v != "" {
 					structMap[k] = v
 				}
@@ -186,9 +194,10 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 		}
 	}
 
-	summary, err := updatePgSUm(structMap, pageURL)
+	summary, err := updatePgSUm(structMap)
 	if err != nil {
 		fmt.Errorf("error updating page summary: %v", err)
+		return nil, err
 	}
 	for _, img := range imageArray {
 		summary.Images = append(summary.Images, img)
@@ -197,7 +206,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 	return summary, nil
 }
 
-func handleAttr(token html.Token) (property string, content string, imgs []*PreviewImage) {
+func handleAttr(token html.Token, pageUrl string) (string, string, []*PreviewImage, error) {
 	prop := ""
 	cont := ""
 	imgAttr := ""
@@ -223,7 +232,7 @@ func handleAttr(token html.Token) (property string, content string, imgs []*Prev
 					prop = "Description"
 				}
 			} else if a.Key == "content" {
-				content = a.Val
+				cont = a.Val
 			}
 		} else if strings.HasPrefix(a.Val, "og:image") {
 			if a.Key == "property" {
@@ -248,7 +257,18 @@ func handleAttr(token html.Token) (property string, content string, imgs []*Prev
 					images[len(images)].URL = a.Val
 				} else if imgAttr == "Image:URL" {
 					if images[len(images)].URL == "" {
-						images[len(images)].URL = a.Val
+						// Ensuring url is an absolute url
+						url, err := url2.Parse(a.Val)
+						if err != nil {
+							return "", "", nil, err
+						}
+
+						pgUrlAsURL, err := url2.Parse(pageUrl)
+						if err != nil {
+							return "", "", nil, err
+						}
+						absUrl := pgUrlAsURL.ResolveReference(url).String()
+						images[len(images)].URL = absUrl
 					}
 				} else if imgAttr == "Image:Secure_URL" {
 					images[len(images)].SecureURL = a.Val
@@ -270,28 +290,20 @@ func handleAttr(token html.Token) (property string, content string, imgs []*Prev
  			}
 		}
 	}
-	return prop, cont, images
+	return prop, cont, images, nil
 }
 
-func updatePgSUm(structMap map[string]string, pageUrl string) (*PageSummary, error) {
+func updatePgSUm(structMap map[string]string,) (*PageSummary, error) {
 	pgSum := &PageSummary{}
 	pgSum.Type = structMap["Type"]
-	// Ensuring url is an absolute url
-	url, err := url2.Parse(structMap["URL"])
-	if err != nil {
-		return nil, err
-	}
-	pgUrlAsURL, err := url2.Parse(pageUrl)
-	if err != nil {
-		return nil, err
-	}
-	urlString := pgUrlAsURL.ResolveReference(url).String()
-	pgSum.URL = urlString
+
+	pgSum.URL = structMap["URL"]
 
 	pgSum.Title = structMap["OG:Title"]
 	if pgSum.Title == "" && structMap["Title"] != "" {
 		pgSum.Title = structMap["Title"]
 	}
+
 	pgSum.SiteName = structMap["SiteName"]
 	pgSum.Description = structMap["OG:Description"]
 	if pgSum.Description == "" && structMap["Description"] != "" {
@@ -300,12 +312,12 @@ func updatePgSUm(structMap map[string]string, pageUrl string) (*PageSummary, err
 	pgSum.Author = structMap["Author"]
 
 	slicedKW := strings.Split(structMap["Keywords"], ",")
-	for _, word := range slicedKW {
-		word = strings.TrimSpace(word)
+	if len(slicedKW) > 1 {
+		for _, word := range slicedKW {
+			word = strings.TrimSpace(word)
+		}
+		pgSum.Keywords = slicedKW
 	}
-	pgSum.Keywords = slicedKW
-
-	pgSum.Icon.URL = structMap["IconURL"]
 
 	return pgSum, nil
 }
