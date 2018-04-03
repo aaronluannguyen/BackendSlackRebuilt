@@ -186,7 +186,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 		}
 	}
 
-	summary, err := updatePgSUm(structMap)
+	summary, err := updatePgSUm(structMap, pageURL)
 	if err != nil {
 		fmt.Errorf("error updating page summary: %v", err)
 	}
@@ -273,7 +273,7 @@ func handleAttr(token html.Token) (property string, content string, imgs []*Prev
 	return prop, cont, images
 }
 
-func updatePgSUm(structMap map[string]string) (*PageSummary, error) {
+func updatePgSUm(structMap map[string]string, pageUrl string) (*PageSummary, error) {
 	pgSum := &PageSummary{}
 	pgSum.Type = structMap["Type"]
 	// Ensuring url is an absolute url
@@ -281,7 +281,11 @@ func updatePgSUm(structMap map[string]string) (*PageSummary, error) {
 	if err != nil {
 		return nil, err
 	}
-	urlString := url.ResolveReference(url).String()
+	pgUrlAsURL, err := url2.Parse(pageUrl)
+	if err != nil {
+		return nil, err
+	}
+	urlString := pgUrlAsURL.ResolveReference(url).String()
 	pgSum.URL = urlString
 
 	pgSum.Title = structMap["OG:Title"]
