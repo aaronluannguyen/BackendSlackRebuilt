@@ -173,6 +173,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 					imageArray = imgs
 				}
 			} else if "link" == token.Data {
+				//FIX ICON HANDLER
 				isIcon := false
 				iconUrl := ""
 				for _, a := range token.Attr {
@@ -218,7 +219,7 @@ func handleAttr(token html.Token, pageUrl string) (string, string, []*PreviewIma
 					prop = "Type"
 				} else if a.Val == "og:url" {
 					prop = "URL"
-				} else if a.Val == "title" {
+				} else if a.Val == "og:title" {
 					prop = "OG:Title"
 				} else if a.Val == "og:site_name" {
 					prop = "SiteName"

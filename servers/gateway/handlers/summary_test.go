@@ -29,50 +29,50 @@ func TestExtractSummary(t *testing.T) {
 				Type: "test type",
 			},
 		},
-		//{
-		//	"Open Graph URL",
-		//	`Make sure you are reading the <meta property="og:url" content="..."> element`,
-		//	pagePrologue + `<meta property="og:url" content="http://test.com">` + pageEiplogue,
-		//	&PageSummary{
-		//		URL: "http://test.com",
-		//	},
-		//},
-		//{
-		//	"Open Graph Title",
-		//	`Make sure you are reading the <meta property="og:title" content="..."> element`,
-		//	pagePrologue + `<meta property="og:title" content="test title">` + pageEiplogue,
-		//	&PageSummary{
-		//		Title: "test title",
-		//	},
-		//},
-		//{
-		//	"Open Graph Site name",
-		//	`Make sure you are reading the <meta property="og:site_name" content="..."> element`,
-		//	pagePrologue + `<meta property="og:site_name" content="test site name">` + pageEiplogue,
-		//	&PageSummary{
-		//		SiteName: "test site name",
-		//	},
-		//},
-		//{
-		//	"Open Graph Description",
-		//	`Make sure you are reading the <meta property="og:description" content="..."> element`,
-		//	pagePrologue + `<meta property="og:description" content="test description">` + pageEiplogue,
-		//	&PageSummary{
-		//		Description: "test description",
-		//	},
-		//},
-		//{
-		//	"Open Graph Image",
-		//	`Make sure you are reading the <meta property="og:image" content="..."> element`,
-		//	pagePrologue + `<meta property="og:image" content="http://test.com/test.png">` + pageEiplogue,
-		//	&PageSummary{
-		//		Images: []*PreviewImage{
-		//			{
-		//				URL: "http://test.com/test.png",
-		//			},
-		//		},
-		//	},
-		//},
+		{
+			"Open Graph URL",
+			`Make sure you are reading the <meta property="og:url" content="..."> element`,
+			pagePrologue + `<meta property="og:url" content="http://test.com">` + pageEiplogue,
+			&PageSummary{
+				URL: "http://test.com",
+			},
+		},
+		{
+			"Open Graph Title",
+			`Make sure you are reading the <meta property="og:title" content="..."> element`,
+			pagePrologue + `<meta property="og:title" content="test title">` + pageEiplogue,
+			&PageSummary{
+				Title: "test title",
+			},
+		},
+		{
+			"Open Graph Site name",
+			`Make sure you are reading the <meta property="og:site_name" content="..."> element`,
+			pagePrologue + `<meta property="og:site_name" content="test site name">` + pageEiplogue,
+			&PageSummary{
+				SiteName: "test site name",
+			},
+		},
+		{
+			"Open Graph Description",
+			`Make sure you are reading the <meta property="og:description" content="..."> element`,
+			pagePrologue + `<meta property="og:description" content="test description">` + pageEiplogue,
+			&PageSummary{
+				Description: "test description",
+			},
+		},
+		{
+			"Open Graph Image",
+			`Make sure you are reading the <meta property="og:image" content="..."> element`,
+			pagePrologue + `<meta property="og:image" content="http://test.com/test.png">` + pageEiplogue,
+			&PageSummary{
+				Images: []*PreviewImage{
+					{
+						URL: "http://test.com/test.png",
+					},
+				},
+			},
+		},
 		//{
 		//	"Open Graph Structured Image",
 		//	`Make sure you are handling the image structured properties, as described in http://ogp.me/#structured`,
