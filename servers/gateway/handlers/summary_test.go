@@ -61,18 +61,18 @@ func TestExtractSummary(t *testing.T) {
 				Description: "test description",
 			},
 		},
-		{
-			"Open Graph Image",
-			`Make sure you are reading the <meta property="og:image" content="..."> element`,
-			pagePrologue + `<meta property="og:image" content="http://test.com/test.png">` + pageEiplogue,
-			&PageSummary{
-				Images: []*PreviewImage{
-					{
-						URL: "http://test.com/test.png",
-					},
-				},
-			},
-		},
+		//{
+		//	"Open Graph Image",
+		//	`Make sure you are reading the <meta property="og:image" content="..."> element`,
+		//	pagePrologue + `<meta property="og:image" content="http://test.com/test.png">` + pageEiplogue,
+		//	&PageSummary{
+		//		Images: []*PreviewImage{
+		//			{
+		//				URL: "http://test.com/test.png",
+		//			},
+		//		},
+		//	},
+		//},
 		//{
 		//	"Open Graph Structured Image",
 		//	`Make sure you are handling the image structured properties, as described in http://ogp.me/#structured`,
@@ -151,14 +151,14 @@ func TestExtractSummary(t *testing.T) {
 		//		},
 		//	},
 		//},
-		//{
-		//	"HTML Title",
-		//	`Make sure you get the page title from the <title> element if not Open Graph title property is available`,
-		//	pagePrologue + `<title>HTML Page Title</title>` + pageEiplogue,
-		//	&PageSummary{
-		//		Title: "HTML Page Title",
-		//	},
-		//},
+		{
+			"HTML Title",
+			`Make sure you get the page title from the <title> element if not Open Graph title property is available`,
+			pagePrologue + `<title>HTML Page Title</title>` + pageEiplogue,
+			&PageSummary{
+				Title: "HTML Page Title",
+			},
+		},
 		//{
 		//	"HTML Description",
 		//	`Make sure you get the page description from the <meta name="author" content="..."> tag if no Open Graph description is available`,
@@ -234,14 +234,14 @@ func TestExtractSummary(t *testing.T) {
 		//		},
 		//	},
 		//},
-		//{
-		//	"Self-Closing Meta",
-		//	"Make sure you are handling self-closing <meta ... /> tags",
-		//	pagePrologue + `<meta property="og:title" content="Open Graph Title"/>` + pageEiplogue,
-		//	&PageSummary{
-		//		Title: "Open Graph Title",
-		//	},
-		//},
+		{
+			"Self-Closing Meta",
+			"Make sure you are handling self-closing <meta ... /> tags",
+			pagePrologue + `<meta property="og:title" content="Open Graph Title"/>` + pageEiplogue,
+			&PageSummary{
+				Title: "Open Graph Title",
+			},
+		},
 		//{
 		//	"Attribute Order",
 		//	"HTML elements and attributes can be in any order; don't assume a particular order",
@@ -266,26 +266,26 @@ func TestExtractSummary(t *testing.T) {
 		//		},
 		//	},
 		//},
-		//{
-		//	"HTML and Open Graph Title",
-		//	`Make sure the <meta property="og:title"> overrides the HTML <title> element`,
-		//	pagePrologue + `
-		//	<meta property="og:title" content="Open Graph Title"/>
-		//	<title>HTML Page Title</title>` + pageEiplogue,
-		//	&PageSummary{
-		//		Title: "Open Graph Title",
-		//	},
-		//},
-		//{
-		//	"HTML and Open Graph Description",
-		//	`Make sure the <meta property="og:description"> overrides the HTML <meta name="description"> element`,
-		//	pagePrologue + `
-		//	<meta property="og:description" content="og description"/>
-		//	<meta name="description" content="html description">` + pageEiplogue,
-		//	&PageSummary{
-		//		Description: "og description",
-		//	},
-		//},
+		{
+			"HTML and Open Graph Title",
+			`Make sure the <meta property="og:title"> overrides the HTML <title> element`,
+			pagePrologue + `
+			<meta property="og:title" content="Open Graph Title"/>
+			<title>HTML Page Title</title>` + pageEiplogue,
+			&PageSummary{
+				Title: "Open Graph Title",
+			},
+		},
+		{
+			"HTML and Open Graph Description",
+			`Make sure the <meta property="og:description"> overrides the HTML <meta name="description"> element`,
+			pagePrologue + `
+			<meta property="og:description" content="og description"/>
+			<meta name="description" content="html description">` + pageEiplogue,
+			&PageSummary{
+				Description: "og description",
+			},
+		},
 		//{
 		//	"Relative Image URL",
 		//	"Remember to resolve relative image URLs to absolute ones using the page URL as a base",
@@ -308,12 +308,12 @@ func TestExtractSummary(t *testing.T) {
 		//		},
 		//	},
 		//},
-		//{
-		//	"Empty Input",
-		//	"A URL might return an empty page",
-		//	"",
-		//	&PageSummary{},
-		//},
+		{
+			"Empty Input",
+			"A URL might return an empty page",
+			"",
+			&PageSummary{},
+		},
 	}
 
 	for _, c := range cases {

@@ -159,18 +159,15 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 			}
 		}
 
-		if tokenType == html.StartTagToken {
+		if tokenType == html.StartTagToken || tokenType == html.SelfClosingTagToken {
 			token := tokenizer.Token()
 			if "meta" == token.Data {
-				k, v, imgs, err := handleAttr(token, pageURL)
+				k, v, err := handleAttr(token, pageURL, imageArray)
 				if err != nil {
 					return nil, err
 				}
 				if k != "" && v != "" {
 					structMap[k] = v
-				}
-				if imgs != nil {
-					imageArray = imgs
 				}
 			} else if "link" == token.Data {
 				//FIX ICON HANDLER
@@ -207,11 +204,10 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 	return summary, nil
 }
 
-func handleAttr(token html.Token, pageUrl string) (string, string, []*PreviewImage, error) {
+func handleAttr(token html.Token, pageUrl string, images []*PreviewImage) (string, string, error) {
 	prop := ""
 	cont := ""
 	imgAttr := ""
-	var images []*PreviewImage
 	for _, a := range token.Attr {
 		if !strings.HasPrefix(a.Val, "og:image") {
 			if a.Key == "property" {
@@ -257,22 +253,17 @@ func handleAttr(token html.Token, pageUrl string) (string, string, []*PreviewIma
 					images = append(images, new(PreviewImage))
 					images[len(images)].URL = a.Val
 				} else if imgAttr == "Image:URL" {
-					if images[len(images)].URL == "" {
-						// Ensuring url is an absolute url
-						url, err := url2.Parse(a.Val)
-						if err != nil {
-							return "", "", nil, err
-						}
-
-						pgUrlAsURL, err := url2.Parse(pageUrl)
-						if err != nil {
-							return "", "", nil, err
-						}
-						absUrl := pgUrlAsURL.ResolveReference(url).String()
-						images[len(images)].URL = absUrl
+					absURL, err := absoluteUrl(pageUrl, a.Val)
+					if err != nil {
+						return "", "", err
 					}
+					images[len(images)].URL = absURL
 				} else if imgAttr == "Image:Secure_URL" {
-					images[len(images)].SecureURL = a.Val
+					absURL, err := absoluteUrl(pageUrl, a.Val)
+					if err != nil {
+						return "", "", err
+					}
+					images[len(images)].SecureURL = absURL
 				} else if imgAttr == "Image:Type" {
 					images[len(images)].Type = a.Val
 				} else if imgAttr == "Image:Width" {
@@ -291,7 +282,7 @@ func handleAttr(token html.Token, pageUrl string) (string, string, []*PreviewIma
  			}
 		}
 	}
-	return prop, cont, images, nil
+	return prop, cont, nil
 }
 
 func updatePgSUm(structMap map[string]string,) (*PageSummary, error) {
@@ -300,15 +291,14 @@ func updatePgSUm(structMap map[string]string,) (*PageSummary, error) {
 
 	pgSum.URL = structMap["URL"]
 
-	pgSum.Title = structMap["OG:Title"]
-	if pgSum.Title == "" && structMap["Title"] != "" {
-		pgSum.Title = structMap["Title"]
+	pgSum.Title = structMap["Title"]
+	if structMap["OG:Title"] != "" {
+		pgSum.Title = structMap["OG:Title"]
 	}
-
 	pgSum.SiteName = structMap["SiteName"]
-	pgSum.Description = structMap["OG:Description"]
-	if pgSum.Description == "" && structMap["Description"] != "" {
-		pgSum.Title = structMap["Description"]
+	pgSum.Description = structMap["Description"]
+	if structMap["OG:Description"] != "" {
+		pgSum.Description = structMap["OG:Description"]
 	}
 	pgSum.Author = structMap["Author"]
 
@@ -321,4 +311,18 @@ func updatePgSUm(structMap map[string]string,) (*PageSummary, error) {
 	}
 
 	return pgSum, nil
+}
+
+func absoluteUrl (base string, url string) (string, error) {
+	urlAsURL, err := url2.Parse(url)
+	if err != nil {
+		return "", err
+	}
+
+	pgUrlAsURL, err := url2.Parse(base)
+	if err != nil {
+		return "", err
+	}
+	absUrl := pgUrlAsURL.ResolveReference(urlAsURL).String()
+	return absUrl, nil
 }
