@@ -204,11 +204,18 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 					}
 				}
 				if isIcon {
-					iconImg.URL = iconUrl
-					iconImg.Type = iconType
-					iconImg.Height = iconHeight
-					iconImg.Width = iconWidth
-					iconImg.Alt = iconAlt
+					absUrl, err := absoluteUrl(pageURL, iconUrl)
+					if err != nil {
+						return nil, err
+					}
+					icon := PreviewImage{
+						URL: absUrl,
+						Type: iconType,
+						Height: iconHeight,
+						Width: iconWidth,
+						Alt: iconAlt,
+					}
+					iconImg = &icon
 				}
 			} else if "title" == token.Data {
 				tokenType = tokenizer.Next()

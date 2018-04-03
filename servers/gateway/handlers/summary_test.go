@@ -191,49 +191,49 @@ func TestExtractSummary(t *testing.T) {
 				Keywords: []string{"one", "two", "three"},
 			},
 		},
-		//{
-		//	"HTML Icon",
-		//	`Make sure you get the page icon from the <link rel="icon" href="..."> tag`,
-		//	pagePrologue + `<link rel="icon" href="http://test.com/test.png">` + pageEiplogue,
-		//	&PageSummary{
-		//		Icon: &PreviewImage{
-		//			URL: "http://test.com/test.png",
-		//		},
-		//	},
-		//},
-		//{
-		//	"HTML Icon With Sizes",
-		//	`Make sure you parse the 'sizes' attribute to get the icon height and width`,
-		//	pagePrologue + `<link rel="icon" href="http://test.com/test.png" sizes="100x200">` + pageEiplogue,
-		//	&PageSummary{
-		//		Icon: &PreviewImage{
-		//			URL:    "http://test.com/test.png",
-		//			Height: 100,
-		//			Width:  200,
-		//		},
-		//	},
-		//},
-		//{
-		//	"HTML Icon With Size Any",
-		//	`The sizes attribute of the <link rel="icon"> tag may have the value "any" to indicate no size preference`,
-		//	pagePrologue + `<link rel="icon" href="http://test.com/test.png" sizes="any">` + pageEiplogue,
-		//	&PageSummary{
-		//		Icon: &PreviewImage{
-		//			URL: "http://test.com/test.png",
-		//		},
-		//	},
-		//},
-		//{
-		//	"HTML Icon With Type",
-		//	`Make sure you read the 'type' attribute to get the icon type`,
-		//	pagePrologue + `<link rel="icon" href="http://test.com/test.png" type="image/png">` + pageEiplogue,
-		//	&PageSummary{
-		//		Icon: &PreviewImage{
-		//			URL:  "http://test.com/test.png",
-		//			Type: "image/png",
-		//		},
-		//	},
-		//},
+		{
+			"HTML Icon",
+			`Make sure you get the page icon from the <link rel="icon" href="..."> tag`,
+			pagePrologue + `<link rel="icon" href="http://test.com/test.png">` + pageEiplogue,
+			&PageSummary{
+				Icon: &PreviewImage{
+					URL: "http://test.com/test.png",
+				},
+			},
+		},
+		{
+			"HTML Icon With Sizes",
+			`Make sure you parse the 'sizes' attribute to get the icon height and width`,
+			pagePrologue + `<link rel="icon" href="http://test.com/test.png" sizes="100x200">` + pageEiplogue,
+			&PageSummary{
+				Icon: &PreviewImage{
+					URL:    "http://test.com/test.png",
+					Height: 100,
+					Width:  200,
+				},
+			},
+		},
+		{
+			"HTML Icon With Size Any",
+			`The sizes attribute of the <link rel="icon"> tag may have the value "any" to indicate no size preference`,
+			pagePrologue + `<link rel="icon" href="http://test.com/test.png" sizes="any">` + pageEiplogue,
+			&PageSummary{
+				Icon: &PreviewImage{
+					URL: "http://test.com/test.png",
+				},
+			},
+		},
+		{
+			"HTML Icon With Type",
+			`Make sure you read the 'type' attribute to get the icon type`,
+			pagePrologue + `<link rel="icon" href="http://test.com/test.png" type="image/png">` + pageEiplogue,
+			&PageSummary{
+				Icon: &PreviewImage{
+					URL:  "http://test.com/test.png",
+					Type: "image/png",
+				},
+			},
+		},
 		{
 			"Self-Closing Meta",
 			"Make sure you are handling self-closing <meta ... /> tags",
@@ -298,16 +298,16 @@ func TestExtractSummary(t *testing.T) {
 				},
 			},
 		},
-		//{
-		//	"Relative Icon URL",
-		//	"Remember to resolve relative HTML Icon URLs to absolute ones using the page URL as a base",
-		//	pagePrologue + `<link rel="icon" href="/test.png"/>` + pageEiplogue,
-		//	&PageSummary{
-		//		Icon: &PreviewImage{
-		//			URL: "http://test.com/test.png",
-		//		},
-		//	},
-		//},
+		{
+			"Relative Icon URL",
+			"Remember to resolve relative HTML Icon URLs to absolute ones using the page URL as a base",
+			pagePrologue + `<link rel="icon" href="/test.png"/>` + pageEiplogue,
+			&PageSummary{
+				Icon: &PreviewImage{
+					URL: "http://test.com/test.png",
+				},
+			},
+		},
 		{
 			"Empty Input",
 			"A URL might return an empty page",
