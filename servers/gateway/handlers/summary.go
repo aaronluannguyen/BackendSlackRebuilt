@@ -70,8 +70,6 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	url := path.Base(r.URL.Path)
 	if len(url) == 0 {
 		fmt.Errorf("status bad request error: %v", http.StatusBadRequest)
-		// !!! Check to see which way of error handling is preferred !!!
-		// http.Error(w, "Status Bad Request Error", http.StatusBadRequest)
 	}
 
 	rc, err := fetchHTML(url)
@@ -137,15 +135,13 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 	https://golang.org/pkg/net/url/#URL.ResolveReference
 	*/
 
-	pgSum := new(PageSummary)
-	pgSum.Images = []*PreviewImage{}
 	structMap := map[string]string{}
+	var imageArray []*PreviewImage
 
 	tokenizer := html.NewTokenizer(htmlStream)
 	for {
 		tokenType := tokenizer.Next()
 
-		// Error handling
 		if tokenType == html.ErrorToken {
 			fmt.Errorf("error tokenizing HTML: %v", tokenizer.Err())
 			return nil, tokenizer.Err()
@@ -161,18 +157,25 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 		if tokenType == html.StartTagToken {
 			token := tokenizer.Token()
 			if "meta" == token.Data {
-				k, v := handleAttr(token, pgSum.Images)
+				k, v, imgs := handleAttr(token)
 				if k != "" && v != "" {
 					structMap[k] = v
 				}
+				if imgs != nil {
+					imageArray = imgs
+				}
 			} else if "link" == token.Data {
 				isIcon := false
+				iconUrl := ""
 				for _, a := range token.Attr {
 					if a.Key == "rel" && a.Val == "icon" {
 						isIcon = true
-					} else if isIcon && a.Key == "href" {
-						pgSum.Icon.URL = a.Val
+					} else if a.Key == "href" {
+						iconUrl = a.Val
 					}
+				}
+				if isIcon {
+					structMap["IconURL"] = iconUrl
 				}
 			} else if "title" == token.Data {
 				tokenType = tokenizer.Next()
@@ -183,18 +186,22 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 		}
 	}
 
-	err := updatePgSUm(pgSum, structMap)
+	summary, err := updatePgSUm(structMap)
 	if err != nil {
 		fmt.Errorf("error updating page summary: %v", err)
 	}
+	for _, img := range imageArray {
+		summary.Images = append(summary.Images, img)
+	}
 
-	return pgSum, nil
+	return summary, nil
 }
 
-func handleAttr(token html.Token, images []*PreviewImage) (property string, content string) {
+func handleAttr(token html.Token) (property string, content string, imgs []*PreviewImage) {
 	prop := ""
 	cont := ""
 	imgAttr := ""
+	var images []*PreviewImage
 	for _, a := range token.Attr {
 		if !strings.HasPrefix(a.Val, "og:image") {
 			if a.Key == "property" {
@@ -263,56 +270,38 @@ func handleAttr(token html.Token, images []*PreviewImage) (property string, cont
  			}
 		}
 	}
-	return prop, cont
+	return prop, cont, images
 }
 
-func updatePgSUm(summary *PageSummary, structMap map[string]string) error {
-	value, exists := structMap["Type"]
-	if exists {
-		summary.Type = value
+func updatePgSUm(structMap map[string]string) (*PageSummary, error) {
+	pgSum := &PageSummary{}
+	pgSum.Type = structMap["Type"]
+	// Ensuring url is an absolute url
+	url, err := url2.Parse(structMap["URL"])
+	if err != nil {
+		return nil, err
 	}
-	value, exists = structMap["URL"]
-	if exists {
-		url, err := url2.Parse(value)
-		if err != nil {
-			return err
-		}
-		url = url.ResolveReference(url)
-		summary.URL = url.String()
+	urlString := url.ResolveReference(url).String()
+	pgSum.URL = urlString
+
+	pgSum.Title = structMap["OG:Title"]
+	if pgSum.Title == "" && structMap["Title"] != "" {
+		pgSum.Title = structMap["Title"]
 	}
-	value, exists = structMap["OG:Title"]
-	if exists {
-		summary.Title = value
-	} else {
-		value, exists = structMap["Title"]
-		if exists {
-			summary.Title = value
-		}
+	pgSum.SiteName = structMap["SiteName"]
+	pgSum.Description = structMap["OG:Description"]
+	if pgSum.Description == "" && structMap["Description"] != "" {
+		pgSum.Title = structMap["Description"]
 	}
-	value, exists = structMap["SiteName"]
-	if exists {
-		summary.SiteName = value
+	pgSum.Author = structMap["Author"]
+
+	slicedKW := strings.Split(structMap["Keywords"], ",")
+	for _, word := range slicedKW {
+		word = strings.TrimSpace(word)
 	}
-	value, exists = structMap["OG:Description"]
-	if exists {
-		summary.Description = value
-	} else {
-		value, exists = structMap["Description"]
-		if exists {
-			summary.Description = value
-		}
-	}
-	value, exists = structMap["Author"]
-	if exists {
-		summary.Author = value
-	}
-	value, exists = structMap["Keywords"]
-	if exists {
-		slicedKW := strings.Split(value, ",")
-		for _, word := range slicedKW {
-			word = strings.TrimSpace(word)
-		}
-		summary.Keywords = slicedKW
-	}
-	return nil
+	pgSum.Keywords = slicedKW
+
+	pgSum.Icon.URL = structMap["IconURL"]
+
+	return pgSum, nil
 }
