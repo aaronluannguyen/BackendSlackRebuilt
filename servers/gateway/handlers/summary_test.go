@@ -73,60 +73,60 @@ func TestExtractSummary(t *testing.T) {
 				},
 			},
 		},
-		//{
-		//	"Open Graph Structured Image",
-		//	`Make sure you are handling the image structured properties, as described in http://ogp.me/#structured`,
-		//	pagePrologue + `
-		//	<meta property="og:image" content="http://test.com/test.png">
-		//	<meta property="og:image:secure_url" content="https://test.com/test.png">
-		//	<meta property="og:image:type" content="image/png">
-		//	<meta property="og:image:width" content="300">
-		//	<meta property="og:image:height" content="300">
-		//	<meta property="og:image:alt" content="test alt">
-		//	` + pageEiplogue,
-		//	&PageSummary{
-		//		Images: []*PreviewImage{
-		//			{
-		//				URL:       "http://test.com/test.png",
-		//				SecureURL: "https://test.com/test.png",
-		//				Type:      "image/png",
-		//				Width:     300,
-		//				Height:    300,
-		//				Alt:       "test alt",
-		//			},
-		//		},
-		//	},
-		//},
-		//{
-		//	"Open Graph Multiple Images",
-		//	`Make sure you are handling multiple images, as described in http://ogp.me/#array`,
-		//	pagePrologue + `
-		//	<meta property="og:image" content="http://test.com/test1.png">
-		//	<meta property="og:image:width" content="100">
-		//	<meta property="og:image:height" content="100">
-		//	<meta property="og:image:alt" content="test alt 1">
-		//	<meta property="og:image" content="http://test.com/test2.png">
-		//	<meta property="og:image" content="http://test.com/test3.png">
-		//	<meta property="og:image:alt" content="test alt 3">
-		//	` + pageEiplogue,
-		//	&PageSummary{
-		//		Images: []*PreviewImage{
-		//			{
-		//				URL:    "http://test.com/test1.png",
-		//				Width:  100,
-		//				Height: 100,
-		//				Alt:    "test alt 1",
-		//			},
-		//			{
-		//				URL: "http://test.com/test2.png",
-		//			},
-		//			{
-		//				URL: "http://test.com/test3.png",
-		//				Alt: "test alt 3",
-		//			},
-		//		},
-		//	},
-		//},
+		{
+			"Open Graph Structured Image",
+			`Make sure you are handling the image structured properties, as described in http://ogp.me/#structured`,
+			pagePrologue + `
+			<meta property="og:image" content="http://test.com/test.png">
+			<meta property="og:image:secure_url" content="https://test.com/test.png">
+			<meta property="og:image:type" content="image/png">
+			<meta property="og:image:width" content="300">
+			<meta property="og:image:height" content="300">
+			<meta property="og:image:alt" content="test alt">
+			` + pageEiplogue,
+			&PageSummary{
+				Images: []*PreviewImage{
+					{
+						URL:       "http://test.com/test.png",
+						SecureURL: "https://test.com/test.png",
+						Type:      "image/png",
+						Width:     300,
+						Height:    300,
+						Alt:       "test alt",
+					},
+				},
+			},
+		},
+		{
+			"Open Graph Multiple Images",
+			`Make sure you are handling multiple images, as described in http://ogp.me/#array`,
+			pagePrologue + `
+			<meta property="og:image" content="http://test.com/test1.png">
+			<meta property="og:image:width" content="100">
+			<meta property="og:image:height" content="100">
+			<meta property="og:image:alt" content="test alt 1">
+			<meta property="og:image" content="http://test.com/test2.png">
+			<meta property="og:image" content="http://test.com/test3.png">
+			<meta property="og:image:alt" content="test alt 3">
+			` + pageEiplogue,
+			&PageSummary{
+				Images: []*PreviewImage{
+					{
+						URL:    "http://test.com/test1.png",
+						Width:  100,
+						Height: 100,
+						Alt:    "test alt 1",
+					},
+					{
+						URL: "http://test.com/test2.png",
+					},
+					{
+						URL: "http://test.com/test3.png",
+						Alt: "test alt 3",
+					},
+				},
+			},
+		},
 		{
 			"All Open Graph Props",
 			"Make sure you are handling all of the Open Graph properties listed in the assignment",

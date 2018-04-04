@@ -143,7 +143,6 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 	tokenizer := html.NewTokenizer(htmlStream)
 	for {
 		tokenType := tokenizer.Next()
-
 		if tokenType == html.ErrorToken {
 			err := tokenizer.Err()
 			if err == io.EOF {
@@ -186,13 +185,13 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 				case k == "Image:Type": insertImage.Type = v
 				case k == "Image:Width":
 					width, err := strconv.Atoi(v)
-					if err == nil {
+					if err != nil {
 						return nil, err
 					}
 					insertImage.Width = width
 				case k == "Image:Height":
 					height, err := strconv.Atoi(v)
-					if err == nil {
+					if err != nil {
 						return nil, err
 					}
 					insertImage.Height = height
@@ -252,13 +251,11 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 	}
 	summary.Icon = iconImg
 	summary.Images = imageArray
-
 	return summary, nil
 }
 
 func handleAttr(token html.Token) (string, string, error) {
 	prop, cont := "", ""
-
 	for _, a := range token.Attr {
 		switch {
 		case a.Key == "property" :
@@ -284,16 +281,13 @@ func handleAttr(token html.Token) (string, string, error) {
 		case a.Key == "content": cont = a.Val
 		}
 	}
-
 	return prop, cont, nil
 }
 
 func updatePgSUm(structMap map[string]string,) (*PageSummary, error) {
 	pgSum := &PageSummary{}
 	pgSum.Type = structMap["Type"]
-
 	pgSum.URL = structMap["URL"]
-
 	pgSum.Title = structMap["Title"]
 	if structMap["OG:Title"] != "" {
 		pgSum.Title = structMap["OG:Title"]
@@ -304,7 +298,6 @@ func updatePgSUm(structMap map[string]string,) (*PageSummary, error) {
 		pgSum.Description = structMap["OG:Description"]
 	}
 	pgSum.Author = structMap["Author"]
-
 	slicedKW := strings.Split(structMap["Keywords"], ",")
 	if len(slicedKW) > 1 {
 		for i, word := range slicedKW {
@@ -312,7 +305,6 @@ func updatePgSUm(structMap map[string]string,) (*PageSummary, error) {
 		}
 		pgSum.Keywords = slicedKW
 	}
-
 	return pgSum, nil
 }
 
@@ -321,7 +313,6 @@ func absoluteUrl (base string, rel string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	baseUrl, err := url2.Parse(base)
 	if err != nil {
 		return "", err
