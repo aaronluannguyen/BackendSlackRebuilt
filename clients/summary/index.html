@@ -4,27 +4,30 @@
     <meta charset="UTF-8">
     <title>Summary Client</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="index.css">
 </head>
 <body>
-    <div class="jumbotron jumbotron-fluid">
+    <div class="jumbotron jumbotron-fluid" id="jumbotron-container">
         <div class="container">
             <h1 class="display-4">Page Summary</h1>
-            <p class="lead">Fetch summary information for any webpage!</p>
+        </div>
+        <div class="container" id="search-container">
+            <form class="form-row">
+                <div class="col-11">
+                    <input type="search" class="form-control mb-2 mr-sm-2" placeholder="Enter a URL to see it's summary!" id="web-search">
+                </div>
+                <div class="col-1">
+                    <button type="submit" class="btn btn-primary mb-2">Search</button>
+                </div>
+            </form>
         </div>
     </div>
     <div class="container">
-        <form class="form-row">
-            <div class="col-10">
-                <input type="text" class="form-control mb-2 mr-sm-2" id="web-search" placeholder="Enter a web page URL for its summary!">
-            </div>
-            <div class="col-2">
-                <button type="submit" class="btn btn-primary mb-2">Search</button>
-            </div>
-        </form>
         <div id="alert-box"></div>
         <div id="result"></div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fetch/2.0.4/fetch.min.js"></script>
     <script src="index.js"></script>
 </body>
 </html>

@@ -1,0 +1,23 @@
+img {
+    max-width: 100%;
+}
+
+#jumbotron-container {
+    padding: 20px 0px;
+    background-color: #E1688C;
+}
+
+.btn {
+    background-color: azure;
+    color: black;
+    outline-color: black;
+}
+
+.display-4 {
+    font-weight: 400;
+}
+
+h1 {
+    padding-bottom: 10px;
+    color: azure;
+}
