@@ -9,6 +9,7 @@ import (
 	"golang.org/x/net/html"
 	"strconv"
 	url2 "net/url"
+	"encoding/json"
 )
 
 //PreviewImage represents a preview image for a page
@@ -35,6 +36,8 @@ type PageSummary struct {
 }
 
 const headerCORS = "Access-Control-Allow-Origin"
+const headerContentType = "Content-Type"
+const contentTypeJSON = "application/json"
 
 //SummaryHandler handles requests for the page summary API.
 //This API expects one query string parameter named `url`,
@@ -65,6 +68,7 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	https://golang.org/pkg/encoding/json/#NewEncoder
 	*/
 
+	w.Header().Add(headerContentType, contentTypeJSON)
 	w.Header().Add(headerCORS, "*")
 
 	url := path.Base(r.URL.Path)
@@ -73,11 +77,14 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rc, err := fetchHTML(url)
-	if err == nil {
-		extractSummary(url, rc)
-	} else {
+	if err != nil {
+		fmt.Errorf("fetching html error: %v", err)
+	}
+	pgSummary, err := extractSummary(url, rc)
+	if err != nil {
 		fmt.Errorf("extracting summary error: %v", err)
 	}
+	json.NewEncoder(w).Encode(pgSummary)
 }
 
 //fetchHTML fetches `pageURL` and returns the body stream or an error.
