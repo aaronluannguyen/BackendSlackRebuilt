@@ -10,5 +10,14 @@ document.querySelector("form")
     .addEventListener("submit", (evt) => {
        evt.preventDefault();
        website = webSearch.value;
-       console.log(website);
+
+       fetch(baseURL + queryCall + website)
+           .then((response) => {
+               if (response.ok) {
+                   return response.json()
+               }
+           })
+           .then()
+           .catch(err => alert(err))
+
     });
