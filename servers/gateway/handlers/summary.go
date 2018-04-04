@@ -137,7 +137,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 
 	structMap := map[string]string{}
 	var imageArray []*PreviewImage
-	insertImage := &PreviewImage{}
+	var insertImage *PreviewImage
 	var iconImg *PreviewImage
 
 	tokenizer := html.NewTokenizer(htmlStream)
@@ -174,6 +174,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 					if err != nil {
 						return nil, err
 					}
+					insertImage = &PreviewImage{}
 					insertImage.URL = absURL
 					imageArray = append(imageArray, insertImage)
 				case k == "Image:Secure_URL":
