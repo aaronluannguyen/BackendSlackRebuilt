@@ -163,53 +163,53 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 
 		if tokenType == html.StartTagToken || tokenType == html.SelfClosingTagToken {
 			token := tokenizer.Token()
-			if "meta" == token.Data {
+			switch {
+			case "meta" == token.Data:
 				k, v, err := handleAttr(token)
 				if err != nil {
 					return nil, err
 				}
-				if k == "Image" {
+				switch {
+				case k == "Image":
 					absURL, err := absoluteUrl(pageURL, v)
 					if err != nil {
 						return nil, err
 					}
 					insertImage.URL = absURL
 					imageArray = append(imageArray, insertImage)
-				} else if k == "Image:Secure_Url" {
+				case k == "Image:Secure_URL":
 					absURL, err := absoluteUrl(pageURL, v)
 					if err != nil {
 						return nil, err
 					}
 					insertImage.SecureURL = absURL
-				} else if k == "Image:Type" {
-					insertImage.Type = v
-				} else if k == "Image:Width" {
+				case k == "Image:Type": insertImage.Type = v
+				case k == "Image:Width":
 					width, err := strconv.Atoi(v)
-					if err != nil {
-						insertImage.Width = width
+					if err == nil {
+						return nil, err
 					}
-				} else if k == "Image:Height" {
+					insertImage.Width = width
+				case k == "Image:Height":
 					height, err := strconv.Atoi(v)
-					if err != nil {
-						insertImage.Height = height
+					if err == nil {
+						return nil, err
 					}
-				} else if k == "Image:Alt" {
-					insertImage.Alt = v
-				} else {
+					insertImage.Height = height
+				case k == "Image:Alt": insertImage.Alt = v
+				default:
 					if k != "" && v != "" {
 						structMap[k] = v
 					}
 				}
-			} else if "link" == token.Data {
+			case "link" == token.Data:
 				isIcon, iconUrl, iconType, iconWidth, iconHeight, iconAlt := false, "", "", 0, 0, ""
 				for _, a := range token.Attr {
-					if a.Key == "rel" && a.Val == "icon" {
-						isIcon = true
-					} else if a.Key == "href" {
-						iconUrl = a.Val
-					} else if a.Key == "type" {
-						iconType = a.Val
-					} else if a.Key == "sizes" {
+					switch {
+					case a.Key == "rel" && a.Val == "icon": isIcon = true
+					case a.Key == "href": iconUrl = a.Val
+					case a.Key == "type": iconType = a.Val
+					case a.Key == "sizes":
 						if a.Val != "any" {
 							sizes := strings.Split(a.Val, "x")
 							height, err := strconv.Atoi(sizes[0])
@@ -223,21 +223,20 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 							}
 							iconWidth = width
 						}
-					} else if a.Key == "alt" {
-						iconAlt = a.Val
+					case a.Key == "alt": iconAlt = a.Val
+					}
+					if isIcon {
+						absUrl, err := absoluteUrl(pageURL, iconUrl)
+						if err != nil {
+							return nil, err
+						}
+						icon := PreviewImage{
+							absUrl, "", iconType, iconWidth, iconHeight, iconAlt,
+						}
+						iconImg = &icon
 					}
 				}
-				if isIcon {
-					absUrl, err := absoluteUrl(pageURL, iconUrl)
-					if err != nil {
-						return nil, err
-					}
-					icon := PreviewImage{
-						absUrl, "", iconType, iconWidth, iconHeight, iconAlt,
-					}
-					iconImg = &icon
-				}
-			} else if "title" == token.Data {
+			case "title" == token.Data:
 				tokenType = tokenizer.Next()
 				if tokenType == html.TextToken {
 					structMap["Title"] = tokenizer.Token().Data
@@ -261,40 +260,28 @@ func handleAttr(token html.Token) (string, string, error) {
 	prop, cont := "", ""
 
 	for _, a := range token.Attr {
-		if a.Key == "property" {
-			if a.Val == "og:type" {
-				prop = "Type"
-			} else if a.Val == "og:url" {
-				prop = "URL"
-			} else if a.Val == "og:title" {
-				prop = "OG:Title"
-			} else if a.Val == "og:site_name" {
-				prop = "SiteName"
-			} else if a.Val == "og:description" {
-				prop = "OG:Description"
-			} else if a.Val == "og:image" {
-				prop = "Image"
-			} else if a.Val == "og:image:secure_url" {
-				prop = "Image:Secure_URL"
-			} else if a.Val == "og:image:type" {
-				prop = "Image:Type"
-			} else if a.Val == "og:image:width" {
-				prop = "Image:Width"
-			} else if a.Val == "og:image:height" {
-				prop = "Image:Height"
-			} else if a.Val == "og:image:alt" {
-				prop = "Image:Alt"
+		switch {
+		case a.Key == "property" :
+			switch {
+			case a.Val == "og:type": prop = "Type"
+			case a.Val == "og:url": prop = "URL"
+			case a.Val == "og:title": prop = "OG:Title"
+			case a.Val == "og:site_name": prop = "SiteName"
+			case a.Val == "og:description": prop = "OG:Description"
+			case a.Val == "og:image": prop = "Image"
+			case a.Val == "og:image:secure_url": prop = "Image:Secure_URL"
+			case a.Val == "og:image:type": prop = "Image:Type"
+			case a.Val == "og:image:width": prop = "Image:Width"
+			case a.Val == "og:image:height": prop = "Image:Height"
+			case a.Val == "og:image:alt": prop = "Image:Alt"
 			}
-		} else if a.Key == "name" {
-			if a.Val == "author" {
-				prop = "Author"
-			} else if a.Val == "keywords" {
-				prop = "Keywords"
-			} else if a.Val == "description" {
-				prop = "Description"
+		case a.Key == "name":
+			switch {
+			case a.Val == "author": prop = "Author"
+			case a.Val == "keywords": prop = "Keywords"
+			case a.Val == "description": prop = "Description"
 			}
-		} else if a.Key == "content" {
-			cont = a.Val
+		case a.Key == "content": cont = a.Val
 		}
 	}
 
