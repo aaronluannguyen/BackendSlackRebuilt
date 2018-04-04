@@ -10,6 +10,7 @@ import (
 	"strconv"
 	url2 "net/url"
 	"encoding/json"
+	"log"
 )
 
 //PreviewImage represents a preview image for a page
@@ -73,17 +74,23 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 
 	url := path.Base(r.URL.Path)
 	if len(url) == 0 {
-		fmt.Errorf("status bad request error: %v", http.StatusBadRequest)
+		http.Error(w, "status bad request error", http.StatusBadRequest)
+		return
 	}
 
-	rc, err := fetchHTML(url)
+	htmlRC, err := fetchHTML(url)
 	if err != nil {
 		fmt.Errorf("fetching html error: %v", err)
+		return
 	}
-	pgSummary, err := extractSummary(url, rc)
+	log.Printf("here")
+	pgSummary, err := extractSummary(url, htmlRC)
+	log.Printf("here2")
 	if err != nil {
 		fmt.Errorf("extracting summary error: %v", err)
+		return
 	}
+	defer htmlRC.Close()
 	json.NewEncoder(w).Encode(pgSummary)
 }
 
@@ -107,10 +114,6 @@ func fetchHTML(pageURL string) (io.ReadCloser, error) {
 	*/
 
 	response, err := http.Get(pageURL)
-
-	// Make sure response body gets closed
-	defer response.Body.Close()
-
 	if err != nil {
 		return nil, fmt.Errorf("bad request error: %d", err)
 	}
