@@ -1,5 +1,5 @@
 img {
-    max-width: 100%;
+    max-width: 50%;
 }
 
 #jumbotron-container {
@@ -21,3 +21,4 @@ h1 {
     padding-bottom: 10px;
     color: azure;
 }
+
