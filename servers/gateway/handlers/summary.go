@@ -137,7 +137,7 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 
 	structMap := map[string]string{}
 	var imageArray []*PreviewImage
-	var insertImage *PreviewImage
+	insertImage := &PreviewImage{}
 	var iconImg *PreviewImage
 
 	tokenizer := html.NewTokenizer(htmlStream)

@@ -127,30 +127,30 @@ func TestExtractSummary(t *testing.T) {
 		//		},
 		//	},
 		//},
-		//{
-		//	"All Open Graph Props",
-		//	"Make sure you are handling all of the Open Graph properties listed in the assignment",
-		//	pagePrologue + `
-		//	<meta property="og:type" content="test type">
-		//	<meta property="og:url" content="http://test.com">
-		//	<meta property="og:title" content="test title">
-		//	<meta property="og:site_name" content="test site name">
-		//	<meta property="og:description" content="test description">
-		//	<meta property="og:image" content="http://test.com/test.png">
-		//	` + pageEiplogue,
-		//	&PageSummary{
-		//		Type:        "test type",
-		//		URL:         "http://test.com",
-		//		Title:       "test title",
-		//		SiteName:    "test site name",
-		//		Description: "test description",
-		//		Images: []*PreviewImage{
-		//			{
-		//				URL: "http://test.com/test.png",
-		//			},
-		//		},
-		//	},
-		//},
+		{
+			"All Open Graph Props",
+			"Make sure you are handling all of the Open Graph properties listed in the assignment",
+			pagePrologue + `
+			<meta property="og:type" content="test type">
+			<meta property="og:url" content="http://test.com">
+			<meta property="og:title" content="test title">
+			<meta property="og:site_name" content="test site name">
+			<meta property="og:description" content="test description">
+			<meta property="og:image" content="http://test.com/test.png">
+			` + pageEiplogue,
+			&PageSummary{
+				Type:        "test type",
+				URL:         "http://test.com",
+				Title:       "test title",
+				SiteName:    "test site name",
+				Description: "test description",
+				Images: []*PreviewImage{
+					{
+						URL: "http://test.com/test.png",
+					},
+				},
+			},
+		},
 		{
 			"HTML Title",
 			`Make sure you get the page title from the <title> element if not Open Graph title property is available`,
@@ -242,30 +242,30 @@ func TestExtractSummary(t *testing.T) {
 				Title: "Open Graph Title",
 			},
 		},
-		//{
-		//	"Attribute Order",
-		//	"HTML elements and attributes can be in any order; don't assume a particular order",
-		//	pagePrologue + `
-		//	<meta content="test title" property="og:title">
-		//	<meta content="test type" property="og:type">
-		//	<meta content="http://test.com/test.png" property="og:image">
-		//	<meta content="test site name" property="og:site_name">
-		//	<meta content="test description" property="og:description">
-		//	<meta content="http://test.com" property="og:url">
-		//	` + pageEiplogue,
-		//	&PageSummary{
-		//		Type:        "test type",
-		//		URL:         "http://test.com",
-		//		Title:       "test title",
-		//		SiteName:    "test site name",
-		//		Description: "test description",
-		//		Images: []*PreviewImage{
-		//			{
-		//				URL: "http://test.com/test.png",
-		//			},
-		//		},
-		//	},
-		//},
+		{
+			"Attribute Order",
+			"HTML elements and attributes can be in any order; don't assume a particular order",
+			pagePrologue + `
+			<meta content="test title" property="og:title">
+			<meta content="test type" property="og:type">
+			<meta content="http://test.com/test.png" property="og:image">
+			<meta content="test site name" property="og:site_name">
+			<meta content="test description" property="og:description">
+			<meta content="http://test.com" property="og:url">
+			` + pageEiplogue,
+			&PageSummary{
+				Type:        "test type",
+				URL:         "http://test.com",
+				Title:       "test title",
+				SiteName:    "test site name",
+				Description: "test description",
+				Images: []*PreviewImage{
+					{
+						URL: "http://test.com/test.png",
+					},
+				},
+			},
+		},
 		{
 			"HTML and Open Graph Title",
 			`Make sure the <meta property="og:title"> overrides the HTML <title> element`,
@@ -286,18 +286,18 @@ func TestExtractSummary(t *testing.T) {
 				Description: "og description",
 			},
 		},
-		//{
-		//	"Relative Image URL",
-		//	"Remember to resolve relative image URLs to absolute ones using the page URL as a base",
-		//	pagePrologue + `<meta property="og:image" content="/test.png"/>` + pageEiplogue,
-		//	&PageSummary{
-		//		Images: []*PreviewImage{
-		//			{
-		//				URL: "http://test.com/test.png",
-		//			},
-		//		},
-		//	},
-		//},
+		{
+			"Relative Image URL",
+			"Remember to resolve relative image URLs to absolute ones using the page URL as a base",
+			pagePrologue + `<meta property="og:image" content="/test.png"/>` + pageEiplogue,
+			&PageSummary{
+				Images: []*PreviewImage{
+					{
+						URL: "http://test.com/test.png",
+					},
+				},
+			},
+		},
 		{
 			"Relative Icon URL",
 			"Remember to resolve relative HTML Icon URLs to absolute ones using the page URL as a base",
