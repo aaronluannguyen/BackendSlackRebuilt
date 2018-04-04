@@ -3,14 +3,12 @@ package handlers
 import (
 	"io"
 	"net/http"
-	"path"
 	"fmt"
 	"strings"
 	"golang.org/x/net/html"
 	"strconv"
 	url2 "net/url"
 	"encoding/json"
-	"log"
 )
 
 //PreviewImage represents a preview image for a page
@@ -69,10 +67,10 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 	https://golang.org/pkg/encoding/json/#NewEncoder
 	*/
 
-	w.Header().Add(headerContentType, contentTypeJSON)
 	w.Header().Add(headerCORS, "*")
+	w.Header().Add(headerContentType, contentTypeJSON)
 
-	url := path.Base(r.URL.Path)
+	url := r.FormValue("url")
 	if len(url) == 0 {
 		http.Error(w, "status bad request error", http.StatusBadRequest)
 		return
@@ -83,9 +81,7 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Errorf("fetching html error: %v", err)
 		return
 	}
-	log.Printf("here")
 	pgSummary, err := extractSummary(url, htmlRC)
-	log.Printf("here2")
 	if err != nil {
 		fmt.Errorf("extracting summary error: %v", err)
 		return
