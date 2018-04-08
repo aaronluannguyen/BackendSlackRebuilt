@@ -1,7 +1,7 @@
 // @ts-check
 "use strict";
 
-let baseURL = "https://localhost:4000";
+let baseURL = "https://api.aaronnluannguyen.me";
 let queryCall = "/v1/summary?url=";
 let website = "";
 let webSearch = document.querySelector("input");
