@@ -191,14 +191,18 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 					insertImage.SecureURL = absURL
 				case k == "Image:Type": insertImage.Type = v
 				case k == "Image:Width":
-					width, _ := strconv.Atoi(v)
-					if width != 0 {
-						insertImage.Width = width
+					if v != "" {
+						width, _ := strconv.Atoi(v)
+						if width != 0 {
+							insertImage.Width = width
+						}
 					}
 				case k == "Image:Height":
-					height, _ := strconv.Atoi(v)
-					if height != 0 {
-						insertImage.Height = height
+					if v != "" {
+						height, _ := strconv.Atoi(v)
+						if height != 0 {
+							insertImage.Height = height
+						}
 					}
 				case k == "Image:Alt": insertImage.Alt = v
 				default:
