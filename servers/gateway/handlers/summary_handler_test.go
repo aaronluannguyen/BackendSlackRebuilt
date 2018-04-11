@@ -27,9 +27,9 @@ func TestSummaryServer(t *testing.T) {
 			"text/plain; charset=utf-8",
 		},
 		{
-			"URL Param All Spaces",
+			"Invalid URL",
 			"url=%20%20",
-			http.StatusBadRequest,
+			http.StatusInternalServerError,
 			"text/plain; charset=utf-8",
 		},
 	}
