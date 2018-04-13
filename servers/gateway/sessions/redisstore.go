@@ -57,7 +57,7 @@ func (rs *RedisStore) Get(sid SessionID, sessionState interface{}) error {
 	if err != nil {
 		return err
 	}
-	rs.Client.Set(sid.getRedisKey(), session, 0)
+	rs.Client.Expire(sid.getRedisKey(), rs.SessionDuration)
 	return json.Unmarshal(sessionByte, sessionState)
 }
 
