@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"math/big"
 	"encoding/base64"
+	"bytes"
 )
 
 //InvalidSessionID represents an empty, invalid session ID
@@ -52,9 +53,9 @@ func NewSessionID(signingKey string) (SessionID, error) {
 	//- encode that byte slice using base64 URL Encoding and return
 	//  the result as a SessionID type
 
-	salt:= ""
+	id:= ""
 	for {
-		if len(salt) >= idLength {
+		if len(id) >= idLength {
 			break
 		}
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(127)))
@@ -62,15 +63,15 @@ func NewSessionID(signingKey string) (SessionID, error) {
 			return InvalidSessionID, err
 		}
 		n := num.Int64()
-		salt += string(n)
+		id += string(n)
 	}
-	saltByte := []byte(salt)
+	idByte := []byte(id)
 
 	h := hmac.New(sha256.New, []byte(signingKey))
-	h.Write(saltByte)
+	h.Write(idByte)
 	hmacHash := h.Sum(nil)
 
-	byteSessionID := append(saltByte, hmacHash...)
+	byteSessionID := append(idByte, hmacHash...)
 	encodedString := base64.URLEncoding.EncodeToString(byteSessionID)
 
 	return SessionID(encodedString), nil
@@ -80,7 +81,6 @@ func NewSessionID(signingKey string) (SessionID, error) {
 //using the `signingKey` as the HMAC signing key
 //and returns an error if invalid, or a SessionID if valid
 func ValidateID(id string, signingKey string) (SessionID, error) {
-
 	//TODO: validate the `id` parameter using the provided `signingKey`.
 	//base64 decode the `id` parameter, HMAC hash the
 	//ID portion of the byte slice, and compare that to the
@@ -88,6 +88,21 @@ func ValidateID(id string, signingKey string) (SessionID, error) {
 	//return the entire `id` parameter as a SessionID type.
 	//If not, return InvalidSessionID and ErrInvalidID.
 
+	decodedID, err := base64.URLEncoding.DecodeString(id)
+	if err != nil {
+		return InvalidSessionID, errors.New("error decoding id: " +  err.Error())
+	}
+
+	idSlice := decodedID[:idLength]
+	hmacSlice := decodedID[idLength:]
+
+	h := hmac.New(sha256.New, []byte(signingKey))
+	h.Write(idSlice)
+	hmacDecodedID := h.Sum(nil)
+
+	if bytes.Equal(hmacDecodedID, hmacSlice) {
+		return SessionID(id), nil
+	}
 	return InvalidSessionID, ErrInvalidID
 }
 
