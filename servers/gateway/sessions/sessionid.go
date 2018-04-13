@@ -3,6 +3,10 @@ package sessions
 import (
 	"crypto/sha256"
 	"errors"
+	"crypto/hmac"
+	"crypto/rand"
+	"math/big"
+	"encoding/base64"
 )
 
 //InvalidSessionID represents an empty, invalid session ID
@@ -35,8 +39,9 @@ var ErrInvalidID = errors.New("Invalid Session ID")
 func NewSessionID(signingKey string) (SessionID, error) {
 	//TODO: if `signingKey` is zero-length, return InvalidSessionID
 	//and an error indicating that it may not be empty
+
 	if len(signingKey) == 0 {
-		return InvalidSessionID, ErrInvalidID
+		return InvalidSessionID, errors.New("signing key cannot be empty")
 	}
 
 	//TODO: Generate a new digitally-signed SessionID by doing the following:
@@ -47,9 +52,28 @@ func NewSessionID(signingKey string) (SessionID, error) {
 	//- encode that byte slice using base64 URL Encoding and return
 	//  the result as a SessionID type
 
-	//the following return statement is just a placeholder
-	//remove it when implementing the function
-	return InvalidSessionID, nil
+	salt:= ""
+	for {
+		if len(salt) >= idLength {
+			break
+		}
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(127)))
+		if err != nil {
+			return InvalidSessionID, err
+		}
+		n := num.Int64()
+		salt += string(n)
+	}
+	saltByte := []byte(salt)
+
+	h := hmac.New(sha256.New, []byte(signingKey))
+	h.Write(saltByte)
+	hmacHash := h.Sum(nil)
+
+	byteSessionID := append(saltByte, hmacHash...)
+	encodedString := base64.URLEncoding.EncodeToString(byteSessionID)
+
+	return SessionID(encodedString), nil
 }
 
 //ValidateID validates the string in the `id` parameter
