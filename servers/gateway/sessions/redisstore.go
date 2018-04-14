@@ -32,7 +32,7 @@ func (rs *RedisStore) Save(sid SessionID, sessionState interface{}) error {
 	//using `sid.getRedisKey()` for the key.
 	//return any errors that occur along the way.
 
-	r, err := json.Marshal(rs)
+	r, err := json.Marshal(sessionState)
 	if err != nil {
 		return err
 	}
@@ -52,13 +52,21 @@ func (rs *RedisStore) Get(sid SessionID, sessionState interface{}) error {
 	//package to do both the get and the reset of the expiry time
 	//in just one network round trip!
 
-	session := rs.Client.Get(sid.getRedisKey())
-	sessionByte, err := session.Bytes()
+	sidString := sid.getRedisKey()
+	pipe := rs.Client.Pipeline()
+	getCommand := pipe.Get(sidString)
+	pipe.Expire(sidString, rs.SessionDuration)
+
+	_, err := pipe.Exec()
 	if err != nil {
-		return err
+		return ErrStateNotFound
 	}
-	rs.Client.Expire(sid.getRedisKey(), rs.SessionDuration)
-	return json.Unmarshal(sessionByte, sessionState)
+
+	jsonSessionState, err := getCommand.Result()
+	if err != nil {
+		return ErrStateNotFound
+	}
+	return json.Unmarshal([]byte(jsonSessionState), sessionState)
 }
 
 //Delete deletes all state data associated with the SessionID from the store.
