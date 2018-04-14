@@ -3,6 +3,7 @@ package sessions
 import (
 	"errors"
 	"net/http"
+	"strings"
 )
 
 const headerAuthorization = "Authorization"
@@ -26,7 +27,16 @@ func BeginSession(signingKey string, store Store, sessionState interface{}, w ht
 	//  where "<sessionID>" is replaced with the newly-created SessionID
 	//  (note the constants declared for you above, which will help you avoid typos)
 
-	return InvalidSessionID, nil
+	newSessionID, err := NewSessionID(signingKey)
+	if err != nil {
+		return InvalidSessionID, nil
+	}
+	err = store.Save(newSessionID, sessionState)
+	if err != nil {
+		return InvalidSessionID, err
+	}
+	w.Header().Add(headerAuthorization, schemeBearer + string(newSessionID))
+	return newSessionID, nil
 }
 
 //GetSessionID extracts and validates the SessionID from the request headers
@@ -35,6 +45,16 @@ func GetSessionID(r *http.Request, signingKey string) (SessionID, error) {
 	//or the "auth" query string parameter if no Authorization header is present,
 	//and validate it. If it's valid, return the SessionID. If not
 	//return the validation error.
+
+	authVal := r.Header.Get(headerAuthorization)
+	if len(authVal) == 0 {
+		authVal = r.URL.Query().Get(paramAuthorization)
+		return ValidateID(authVal, signingKey)
+	}
+	authValSplit := strings.Split(authVal, " ")
+	if authValSplit[0] == schemeBearer {
+		return ValidateID(authValSplit[1], signingKey)
+	}
 	return InvalidSessionID, nil
 }
 
