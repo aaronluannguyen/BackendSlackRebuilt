@@ -9,6 +9,7 @@ import (
 const headerAuthorization = "Authorization"
 const paramAuthorization = "auth"
 const schemeBearer = "Bearer "
+const schemeBearerNoSpace = "Bearer"
 
 //ErrNoSessionID is used when no session ID was found in the Authorization header
 var ErrNoSessionID = errors.New("no session ID found in " + headerAuthorization + " header")
@@ -46,16 +47,19 @@ func GetSessionID(r *http.Request, signingKey string) (SessionID, error) {
 	//and validate it. If it's valid, return the SessionID. If not
 	//return the validation error.
 
-	authVal := r.Header.Get(headerAuthorization)
-	if len(authVal) == 0 {
-		authVal = r.URL.Query().Get(paramAuthorization)
-		return ValidateID(authVal, signingKey)
+	authVals := strings.Split(r.Header.Get(headerAuthorization), " ")
+	isValid := checkAuthIsValid(authVals)
+	switch {
+		case isValid: return ValidateID(authVals[1], signingKey)
+		case !isValid:
+			authParamVals := strings.Split(r.URL.Query().Get(paramAuthorization), " ")
+			isParamValid := checkAuthIsValid(authParamVals)
+			if isParamValid {
+				return ValidateID(authParamVals[1], signingKey)
+			}
+			return InvalidSessionID, ErrInvalidScheme
 	}
-	authValSplit := strings.Split(authVal, " ")
-	if authValSplit[0] == schemeBearer {
-		return ValidateID(authValSplit[1], signingKey)
-	}
-	return InvalidSessionID, nil
+	return InvalidSessionID, ErrNoSessionID
 }
 
 //GetState extracts the SessionID from the request,
@@ -74,4 +78,17 @@ func EndSession(r *http.Request, signingKey string, store Store) (SessionID, err
 	//TODO: get the SessionID from the request, and delete the
 	//data associated with it in the store.
 	return InvalidSessionID, nil
+}
+
+
+func checkAuthIsValid(values []string) bool {
+	switch {
+	case len(values) <= 1:
+		return false
+	case len(values) == 2:
+		if values[0] == schemeBearerNoSpace {
+			return true
+		}
+	}
+	return false
 }
