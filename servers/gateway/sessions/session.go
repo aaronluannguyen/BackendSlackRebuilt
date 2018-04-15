@@ -30,7 +30,7 @@ func BeginSession(signingKey string, store Store, sessionState interface{}, w ht
 
 	newSessionID, err := NewSessionID(signingKey)
 	if err != nil {
-		return InvalidSessionID, nil
+		return InvalidSessionID, err
 	}
 	err = store.Save(newSessionID, sessionState)
 	if err != nil {
@@ -68,7 +68,16 @@ func GetSessionID(r *http.Request, signingKey string) (SessionID, error) {
 func GetState(r *http.Request, signingKey string, store Store, sessionState interface{}) (SessionID, error) {
 	//TODO: get the SessionID from the request, and get the data
 	//associated with that SessionID from the store.
-	return InvalidSessionID, nil
+
+	sessionID, err := GetSessionID(r, signingKey)
+	if err != nil {
+		return InvalidSessionID, err
+	}
+	err = store.Get(sessionID, sessionState)
+	if err != nil {
+		return InvalidSessionID, err
+	}
+	return sessionID, nil
 }
 
 //EndSession extracts the SessionID from the request,
@@ -77,7 +86,16 @@ func GetState(r *http.Request, signingKey string, store Store, sessionState inte
 func EndSession(r *http.Request, signingKey string, store Store) (SessionID, error) {
 	//TODO: get the SessionID from the request, and delete the
 	//data associated with it in the store.
-	return InvalidSessionID, nil
+
+	sessionID, err := GetSessionID(r, signingKey)
+	if err != nil {
+		return InvalidSessionID, err
+	}
+	err = store.Delete(sessionID)
+	if err != nil {
+		return InvalidSessionID, err
+	}
+	return sessionID, nil
 }
 
 
