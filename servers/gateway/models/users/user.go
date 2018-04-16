@@ -146,7 +146,7 @@ func (u *User) Authenticate(password string) error {
 	//TODO: use the bcrypt package to compare the supplied
 	//password with the stored PassHash
 	//https://godoc.org/golang.org/x/crypto/bcrypt
-	err := bcrypt.CompareHashAndPassword(u.PassHash, password)
+	err := bcrypt.CompareHashAndPassword(u.PassHash, []byte(password))
 	if err != nil {
 		return err
 	}
