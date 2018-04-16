@@ -1,6 +1,8 @@
 package users
 
-import "testing"
+import (
+	"testing"
+)
 
 //TODO: add tests for the various functions in user.go, as described in the assignment.
 //use `go test -cover` to ensure that you are covering all or nearly all of your code paths.
@@ -115,13 +117,67 @@ func TestValidate(t *testing.T) {
 			t.Errorf("case: %s: expected error but didn't get one", c.name)
 		}
 		if err != nil && !c.expectError {
-			t.Errorf("case: %s: unexpected error", c.name)
+			t.Errorf("case: %s: unexpected error: %d", c.name, err)
 		}
 	}
 }
 
 func TestToUser(t *testing.T) {
+	validateCases := []struct {
+		name string
+		nu NewUser
+		expectError bool
+	}{
+		{
+			"Check Validate Error",
+			NewUser{
+				Password: "12345",
+			},
+			true,
+		},
+	}
 
+	for _, c := range validateCases {
+		_, err := c.nu.ToUser()
+		if err == nil && c.expectError {
+			t.Errorf("expected error but didn't get one")
+		}
+	}
+
+	gravatarCases := []struct{
+		name string
+		nu NewUser
+	}{
+		{
+			"Email Address with capital, lowercase letters, and numbers",
+			NewUser{
+				Email: "Test123@uw.edu",
+				Password: "123456",
+				PasswordConf: "123456",
+				UserName: "Username",
+			},
+		},
+		{
+			"Email Address with spaces",
+			NewUser{
+				Email: " Test123@uw.edu ",
+				Password: "123456",
+				PasswordConf: "123456",
+				UserName: "Username",
+			},
+		},
+	}
+
+	for _, c := range gravatarCases {
+		user, err := c.nu.ToUser()
+		if err != nil {
+			t.Errorf("case %s: unexpected error: %d", c.name, err)
+		}
+		checkURL, _ := getGravatarURL(c.nu.Email)
+		if user.PhotoURL != checkURL {
+			t.Errorf("case %s: error getting correct gravatar URL", c.name)
+		}
+	}
 }
 
 func TestFullName(t *testing.T) {
@@ -213,7 +269,7 @@ func TestAuthenticate(t *testing.T) {
 	for _, c := range cases {
 		err := c.user.Authenticate(c.testPassword)
 		if err != nil && !c.err {
-			t.Errorf("case: %s: unexpected error", c.name)
+			t.Errorf("case: %s: unexpected error: %d", c.name, err)
 		}
 		if err == nil && c.err {
 			t.Errorf("case %s: expected error but didn't get one", c.name)
