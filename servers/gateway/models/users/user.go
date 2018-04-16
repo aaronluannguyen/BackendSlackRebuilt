@@ -158,6 +158,9 @@ func (u *User) Authenticate(password string) error {
 func (u *User) ApplyUpdates(updates *Updates) error {
 	//TODO: set the fields of `u` to the values of the related
 	//field in the `updates` struct
+	if len(updates.FirstName) == 0 || len(updates.LastName) == 0 {
+		return fmt.Errorf("invalid update: first name and/or last name is empty")
+	}
 	u.FirstName = updates.FirstName
 	u.LastName = updates.LastName
 	return nil
