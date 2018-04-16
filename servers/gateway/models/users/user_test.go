@@ -222,5 +222,22 @@ func TestAuthenticate(t *testing.T) {
 }
 
 func TestApplyUpdates(t *testing.T) {
+	user := User{FirstName: "First", LastName: "Last"}
+	update := &Updates{"NewFirst", "NewLast"}
+	err := user.ApplyUpdates(update)
+	if err != nil {
+		t.Errorf("unexpected error when updating first and last name")
+	}
+	if user.FirstName != update.FirstName {
+		t.Errorf("error in updating first name")
+	}
+	if user.LastName != update.LastName {
+		t.Errorf("error in updating last name")
+	}
 
+	invalidUpdate := &Updates{"", ""}
+	err = user.ApplyUpdates(invalidUpdate)
+	if err == nil {
+		t.Errorf("expected error but didn't get one for an invalid update with empty first and last name strings")
+	}
 }
