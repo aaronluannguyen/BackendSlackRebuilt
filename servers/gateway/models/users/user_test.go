@@ -159,7 +159,7 @@ func TestToUser(t *testing.T) {
 			},
 		},
 		{
-			"Email Address with spaces",
+			"Email Address with spaces in front and end",
 			NewUser{
 				Email: " Test123@uw.edu ",
 				Password: "123456",

@@ -169,10 +169,7 @@ func (u *User) ApplyUpdates(updates *Updates) error {
 func getGravatarURL (email string) (string, error) {
 	trimmedEmail := strings.TrimSpace(email)
 	hash := md5.New()
-	_, err := hash.Write([]byte(trimmedEmail))
-	if err != nil {
-		return "", err
-	}
+	hash.Write([]byte(trimmedEmail))
 	gravatarURL := gravatarBasePhotoURL + string(hash.Sum(nil))
 	return gravatarURL, nil
 }
