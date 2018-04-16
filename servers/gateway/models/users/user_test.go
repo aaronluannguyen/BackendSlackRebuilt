@@ -2,6 +2,7 @@ package users
 
 import (
 	"testing"
+	"golang.org/x/crypto/bcrypt"
 )
 
 //TODO: add tests for the various functions in user.go, as described in the assignment.
@@ -176,6 +177,59 @@ func TestToUser(t *testing.T) {
 		checkURL, _ := getGravatarURL(c.nu.Email)
 		if user.PhotoURL != checkURL {
 			t.Errorf("case %s: error getting correct gravatar URL", c.name)
+		}
+	}
+
+	passwordCases := []struct {
+		name string
+		nu NewUser
+		expectError bool
+	}{
+		{
+			"Password with letters (upper and lower) and numbers",
+			NewUser{
+				Email: " Test123@uw.edu ",
+				Password: "Password123",
+				PasswordConf: "Password123",
+				UserName: "Username",
+			},
+			false,
+		},
+		{
+			"Empty String Password",
+			NewUser{
+				Email: " Test123@uw.edu ",
+				Password: "",
+				PasswordConf: "",
+				UserName: "Username",
+			},
+			true,
+		},
+		{
+			"Password with letters (upper and lower), numbers, and special characters",
+			NewUser{
+				Email: " Test123@uw.edu ",
+				Password: "Password123!@#",
+				PasswordConf: "Password123!@#",
+				UserName: "Username",
+			},
+			false,
+		},
+	}
+
+	for _, c := range passwordCases {
+		user, err := c.nu.ToUser()
+		if err == nil && c.expectError {
+			t.Errorf("case %s: expected error but didn't get one", c.name)
+		}
+		if err != nil && !c.expectError {
+			t.Errorf("case %s: unexpected error: %d", c.name, err)
+		}
+		if user != nil {
+			err = bcrypt.CompareHashAndPassword(user.PassHash, []byte(c.nu.Password))
+			if err != nil {
+				t.Errorf("case: %s: password hashes do not match", c.name)
+			}
 		}
 	}
 }
