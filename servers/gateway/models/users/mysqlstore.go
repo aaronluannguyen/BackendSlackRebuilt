@@ -7,7 +7,10 @@ type MySQLStore struct {
 }
 
 func NewMySQLStore(db *sql.DB) *MySQLStore {
-
+	if db == nil {
+		panic("nil database pointer")
+	}
+	return &MySQLStore{db}
 }
 
 func GetByID(id int64) (*User, error) {
