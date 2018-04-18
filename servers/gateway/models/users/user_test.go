@@ -99,13 +99,25 @@ func TestValidate(t *testing.T) {
 			},
 		},
 		{
-			"Invalid Username",
+			"Invalid Empty Username",
 			true,
 			NewUser{
 				"test@uw.edu",
 				"123456",
 				"123456",
 				"",
+				"FirstName",
+				"LastName",
+			},
+		},
+		{
+			"Invalid Username w/ Spaces",
+			true,
+			NewUser{
+				"test@uw.edu",
+				"123456",
+				"123456",
+				"Hello There",
 				"FirstName",
 				"LastName",
 			},
