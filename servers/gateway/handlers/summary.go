@@ -78,15 +78,15 @@ func SummaryHandler(w http.ResponseWriter, r *http.Request) {
 
 	htmlRC, err := fetchHTML(url)
 	if err != nil {
-		fmt.Errorf("fetching html error: %v", err)
-		return
-	}
-	pgSummary, err := extractSummary(url, htmlRC)
-	if err != nil {
-		fmt.Errorf("extracting summary error: %v", err)
+		http.Error(w, "error fetching html: " + err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer htmlRC.Close()
+	pgSummary, err := extractSummary(url, htmlRC)
+	if err != nil {
+		http.Error(w, "extracting summary error: " + err.Error(), http.StatusInternalServerError)
+		return
+	}
 	json.NewEncoder(w).Encode(pgSummary)
 }
 
@@ -191,17 +191,19 @@ func extractSummary(pageURL string, htmlStream io.ReadCloser) (*PageSummary, err
 					insertImage.SecureURL = absURL
 				case k == "Image:Type": insertImage.Type = v
 				case k == "Image:Width":
-					width, err := strconv.Atoi(v)
-					if err != nil {
-						return nil, err
+					if v != "" {
+						width, _ := strconv.Atoi(v)
+						if width != 0 {
+							insertImage.Width = width
+						}
 					}
-					insertImage.Width = width
 				case k == "Image:Height":
-					height, err := strconv.Atoi(v)
-					if err != nil {
-						return nil, err
+					if v != "" {
+						height, _ := strconv.Atoi(v)
+						if height != 0 {
+							insertImage.Height = height
+						}
 					}
-					insertImage.Height = height
 				case k == "Image:Alt": insertImage.Alt = v
 				default:
 					if k != "" && v != "" {

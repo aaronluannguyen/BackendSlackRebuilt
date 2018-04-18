@@ -1,7 +1,7 @@
 // @ts-check
 "use strict";
 
-let baseURL = "http://localhost:4000";
+let baseURL = "https://api.aaronnluannguyen.me";
 let queryCall = "/v1/summary?url=";
 let website = "";
 let webSearch = document.querySelector("input");
@@ -33,11 +33,13 @@ document.querySelector("form")
                imageDiv.classList.add("imgDiv");
                card.appendChild(imageDiv);
 
-               for (let i = 0; i < data.images.length; i++) {
-                   let img = document.createElement("img");
-                   img.classList.add("card-img-top");
-                   img.src = data.images[i].url;
-                   imageDiv.appendChild(img);
+               if (data.images) {
+                   for (let i = 0; i < data.images.length; i++) {
+                       let img = document.createElement("img");
+                       img.classList.add("card-img-top");
+                       img.src = data.images[i].url;
+                       imageDiv.appendChild(img);
+                   }
                }
 
                let cardBody = document.createElement("div");
