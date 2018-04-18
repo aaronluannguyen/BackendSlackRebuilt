@@ -44,7 +44,7 @@ func (s *MySQLStore) Insert(user *User) (*User, error) {
 	result, err := s.db.Exec(sqlInsert, user.Email, user.PassHash, user.UserName,
 		user.FirstName, user.LastName, user.PhotoURL)
 	if err != nil {
-		return nil, fmt.Errorf("executinginsert: %v", err)
+		return nil, fmt.Errorf("executing insert: %v", err)
 	}
 	id, err := result.LastInsertId()
 	if err != nil {

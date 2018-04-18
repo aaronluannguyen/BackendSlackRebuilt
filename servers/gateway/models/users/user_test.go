@@ -186,7 +186,7 @@ func TestToUser(t *testing.T) {
 		if err != nil {
 			t.Errorf("case %s: unexpected error: %d", c.name, err)
 		}
-		checkURL, _ := getGravatarURL(c.nu.Email)
+		checkURL := getGravatarURL(c.nu.Email)
 		if user.PhotoURL != checkURL {
 			t.Errorf("case %s: error getting correct gravatar URL", c.name)
 		}

@@ -5,6 +5,7 @@ import (
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"regexp"
 	"database/sql"
+	"fmt"
 )
 
 func TestNewMySQLStorePanic(t *testing.T) {
@@ -41,6 +42,22 @@ func TestMySQLStore_GetByID(t *testing.T) {
 	if _, err := s.GetByID(int64(expectedID)); err != nil {
 		t.Errorf("error was not expected while getting user by id: %s", err)
 	}
+
+	mock.ExpectQuery(regexp.QuoteMeta(expectedSQL)).
+		WithArgs(expectedID).
+		WillReturnError(fmt.Errorf("scanning error"))
+
+	if _, err := s.GetByID(int64(expectedID)); err == nil {
+		t.Errorf("expecting scanning error, but didn't get one")
+	}
+
+	mock.ExpectQuery(regexp.QuoteMeta(expectedSQL)).
+		WithArgs(expectedID).
+		WillReturnError(sql.ErrNoRows)
+
+	if _, err := s.GetByID(int64(expectedID)); err == nil {
+		t.Errorf("expecting an ErrNoRows but didn't get one")
+	}
 	expectationsMetTest(t, mock)
 }
 
@@ -59,6 +76,22 @@ func TestMySQLStore_GetByEmail(t *testing.T) {
 
 	if _, err := s.GetByEmail(expectedEmail); err != nil {
 		t.Errorf("error was not expected while getting user by email: %s", err)
+	}
+
+	mock.ExpectQuery(regexp.QuoteMeta(expectedSQL)).
+		WithArgs(expectedEmail).
+		WillReturnError(fmt.Errorf("scanning error"))
+
+	if _, err := s.GetByEmail(expectedEmail); err == nil {
+		t.Errorf("expecting scanning error, but didn't get one")
+	}
+
+	mock.ExpectQuery(regexp.QuoteMeta(expectedSQL)).
+		WithArgs(expectedEmail).
+		WillReturnError(sql.ErrNoRows)
+
+	if _, err := s.GetByEmail(expectedEmail); err == nil {
+		t.Errorf("expecting an ErrNoRows but didn't get one")
 	}
 	expectationsMetTest(t, mock)
 }
@@ -79,6 +112,22 @@ func TestMySQLStore_GetByUserName(t *testing.T) {
 	if _, err := s.GetByUserName(expectedUsername); err != nil {
 		t.Errorf("error was not expected while getting user by username: %s", err)
 	}
+
+	mock.ExpectQuery(regexp.QuoteMeta(expectedSQL)).
+		WithArgs(expectedUsername).
+		WillReturnError(sql.ErrNoRows)
+
+	if _, err := s.GetByUserName(expectedUsername); err == nil {
+		t.Errorf("expecting an ErrNoRows but didn't get one")
+	}
+
+	mock.ExpectQuery(regexp.QuoteMeta(expectedSQL)).
+		WithArgs(expectedUsername).
+		WillReturnError(fmt.Errorf("scanning error"))
+
+	if _, err := s.GetByUserName(expectedUsername); err == nil {
+		t.Errorf("expecting scanning error, but didn't get one")
+	}
 	expectationsMetTest(t, mock)
 }
 
@@ -97,6 +146,22 @@ func TestMySQLStore_Insert(t *testing.T) {
 
 	if _, err := s.Insert(u); err != nil {
 		t.Errorf("error was not expected while inserting: %s", err)
+	}
+
+	mock.ExpectExec(regexp.QuoteMeta(sqlInsert)).
+		WithArgs(u.Email, u.PassHash, u.UserName, u.FirstName, u.LastName, u.PhotoURL).
+		WillReturnError(fmt.Errorf("executing insert error"))
+
+	if _, err := s.Insert(u); err == nil {
+		t.Errorf("expecting executing insert error, but didn't get one")
+	}
+
+	mock.ExpectExec(regexp.QuoteMeta(sqlInsert)).
+		WithArgs(u.Email, u.PassHash, u.UserName, u.FirstName, u.LastName, u.PhotoURL).
+		WillReturnError(fmt.Errorf("getting new ID error"))
+
+	if _, err := s.Insert(u); err == nil {
+		t.Errorf("expecting getting new ID error, but didn't get one")
 	}
 	expectationsMetTest(t, mock)
 }
@@ -122,6 +187,30 @@ func TestMySQLStore_Update(t *testing.T) {
 	if _, err := s.Update(int64(expectedID), update); err != nil {
 		t.Errorf("expected no error with update, but got %s", err)
 	}
+
+	mock.ExpectExec(regexp.QuoteMeta(sqlUpdate)).
+		WithArgs(update.FirstName, update.LastName, expectedID).
+		WillReturnError(fmt.Errorf("executing update error"))
+
+	if _, err := s.Update(int64(expectedID), update); err == nil {
+		t.Errorf("expecting executing update error, but didn't get one")
+	}
+
+	mock.ExpectExec(regexp.QuoteMeta(sqlUpdate)).
+		WithArgs(update.FirstName, update.LastName, expectedID).
+		WillReturnError(fmt.Errorf("getting rows affected error"))
+
+	if _, err := s.Update(int64(expectedID), update); err == nil {
+		t.Errorf("expecting getting rows affected error, but didn't get one")
+	}
+
+	mock.ExpectExec(regexp.QuoteMeta(sqlUpdate)).
+		WithArgs(update.FirstName, update.LastName, expectedID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	if _, err := s.Update(int64(expectedID), update); err == nil {
+		t.Errorf("expecting ErrUserNotFound, but didn't get one")
+	}
 	expectationsMetTest(t, mock)
 }
 
@@ -137,8 +226,32 @@ func TestMySQLStore_Delete(t *testing.T) {
 		WithArgs(expectedID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	if err := s.Delete(int64(1)); err != nil {
+	if err := s.Delete(int64(expectedID)); err != nil {
 		t.Errorf("expected no error with delete, but got %s", err)
+	}
+
+	mock.ExpectExec(regexp.QuoteMeta(sqlDelete)).
+		WithArgs(expectedID).
+		WillReturnError(fmt.Errorf("executing delete error"))
+
+	if err := s.Delete(int64(expectedID)); err == nil {
+		t.Errorf("expecting executing update error, but didn't get one")
+	}
+
+	mock.ExpectExec(regexp.QuoteMeta(sqlDelete)).
+		WithArgs(expectedID).
+		WillReturnError(fmt.Errorf("getting rows affected error"))
+
+	if err := s.Delete(int64(expectedID)); err == nil {
+		t.Errorf("expecting getting rows affected error, but didn't get one")
+	}
+
+	mock.ExpectExec(regexp.QuoteMeta(sqlDelete)).
+		WithArgs(expectedID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	if err := s.Delete(int64(expectedID)); err == nil {
+		t.Errorf("expecting ErrUserNotFound, but didn't get one")
 	}
 	expectationsMetTest(t, mock)
 }

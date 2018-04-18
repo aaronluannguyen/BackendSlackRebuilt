@@ -103,7 +103,7 @@ func (nu *NewUser) ToUser() (*User, error) {
 		FirstName: nu.FirstName,
 		LastName: nu.LastName,
 	}
-	photoURL, err := getGravatarURL(nu.Email)
+	photoURL:= getGravatarURL(nu.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -166,10 +166,10 @@ func (u *User) ApplyUpdates(updates *Updates) error {
 	return nil
 }
 
-func getGravatarURL (email string) (string, error) {
+func getGravatarURL (email string) (string) {
 	trimmedEmail := strings.TrimSpace(email)
 	hash := md5.New()
 	hash.Write([]byte(trimmedEmail))
 	gravatarURL := gravatarBasePhotoURL + string(hash.Sum(nil))
-	return gravatarURL, nil
+	return gravatarURL
 }
