@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"database/sql"
 	"fmt"
+	"database/sql/driver"
 )
 
 func TestNewMySQLStorePanic(t *testing.T) {
@@ -156,9 +157,10 @@ func TestMySQLStore_Insert(t *testing.T) {
 		t.Errorf("expecting executing insert error, but didn't get one")
 	}
 
+	_, ErrNoRowsAffected := driver.ResultNoRows.RowsAffected()
 	mock.ExpectExec(regexp.QuoteMeta(sqlInsert)).
 		WithArgs(u.Email, u.PassHash, u.UserName, u.FirstName, u.LastName, u.PhotoURL).
-		WillReturnError(fmt.Errorf("getting new ID error"))
+		WillReturnResult(sqlmock.NewErrorResult(ErrNoRowsAffected))
 
 	if _, err := s.Insert(u); err == nil {
 		t.Errorf("expecting getting new ID error, but didn't get one")
@@ -196,9 +198,10 @@ func TestMySQLStore_Update(t *testing.T) {
 		t.Errorf("expecting executing update error, but didn't get one")
 	}
 
+	_, ErrNoRowsAffected := driver.ResultNoRows.RowsAffected()
 	mock.ExpectExec(regexp.QuoteMeta(sqlUpdate)).
 		WithArgs(update.FirstName, update.LastName, expectedID).
-		WillReturnError(fmt.Errorf("getting rows affected error"))
+		WillReturnResult(sqlmock.NewErrorResult(ErrNoRowsAffected))
 
 	if _, err := s.Update(int64(expectedID), update); err == nil {
 		t.Errorf("expecting getting rows affected error, but didn't get one")
@@ -238,9 +241,10 @@ func TestMySQLStore_Delete(t *testing.T) {
 		t.Errorf("expecting executing update error, but didn't get one")
 	}
 
+	_, ErrNoRowsAffected := driver.ResultNoRows.RowsAffected()
 	mock.ExpectExec(regexp.QuoteMeta(sqlDelete)).
 		WithArgs(expectedID).
-		WillReturnError(fmt.Errorf("getting rows affected error"))
+		WillReturnResult(sqlmock.NewErrorResult(ErrNoRowsAffected))
 
 	if err := s.Delete(int64(expectedID)); err == nil {
 		t.Errorf("expecting getting rows affected error, but didn't get one")
