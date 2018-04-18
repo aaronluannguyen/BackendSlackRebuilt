@@ -1,5 +1,5 @@
 create table users (
-  id int primary key not null,
+  id int primary key auto_increment not null,
   email varchar(255) not null,
   passHash binary(60) not null,
   username varchar(255) not null,
