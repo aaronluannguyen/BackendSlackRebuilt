@@ -6,7 +6,10 @@ import (
 )
 
 const sqlSelectAll = "select * from users"
-const sqlSelectByID =  sqlSelectAll + " where id=?"
+const sqlSelectBy =  sqlSelectAll + " where "
+const sqlSelectByID = sqlSelectBy + "id=?"
+const sqlSelectByEmail = sqlSelectBy + "email=?"
+const sqlSelectByUsername = sqlSelectBy + "username=?"
 const sqlInsert = "insert into users (email, passHash, username, firstName, lastName, photoURL) values (?,?,?,?,?,?)"
 const sqlUpdate = "update users set firstName=?, lastName=? where id=?"
 const sqlDelete = "delete from users where id=?"
@@ -28,12 +31,12 @@ func (s *MySQLStore) GetByID(id int64) (*User, error) {
 }
 
 func (s *MySQLStore) GetByEmail(email string) (*User, error) {
-	row := s.db.QueryRow(sqlSelectByID, email)
+	row := s.db.QueryRow(sqlSelectByEmail, email)
 	return getByX(row)
 }
 
 func (s *MySQLStore) GetByUserName(username string) (*User, error) {
-	row := s.db.QueryRow(sqlSelectByID, username)
+	row := s.db.QueryRow(sqlSelectByUsername, username)
 	return getByX(row)
 }
 
@@ -54,7 +57,7 @@ func (s *MySQLStore) Insert(user *User) (*User, error) {
 func (s *MySQLStore) Update(id int64, updates *Updates) (*User, error) {
 	result, err := s.db.Exec(sqlUpdate, updates.FirstName, updates.LastName, id)
 	if err != nil {
-		return nil, fmt.Errorf("updatingL %v", err)
+		return nil, fmt.Errorf("updating: %v", err)
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
