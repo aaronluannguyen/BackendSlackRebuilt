@@ -23,11 +23,11 @@ resource "digitalocean_droplet" "summary-server" {
 //      "sudo letsencrypt certonly --standalone -n -agree-tos --email aaronluannguyen@gmail.com -d api.aaronnluannguyen.me"
 //    ]
 //  }
-}
-
+//}
+//
 //resource "digitalocean_record" "api" {
 //  domain = "api.aaronnluannguyen.me"
 //  type = "A"
 //  name = "api"
 //  value = "${digitalocean_droplet.summary-server.ipv4_address}"
-//}
+}
