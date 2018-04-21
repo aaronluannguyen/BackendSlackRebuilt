@@ -13,6 +13,6 @@ import (
 //and the user store
 type Context struct {
 	signingKey		string
-	sessionStore 	*sessions.Store
-	usersStore 		*users.Store
+	sessionStore 	sessions.Store
+	usersStore 		users.Store
 }
