@@ -13,7 +13,40 @@ import (
 //struct as the receiver on these functions so that you have
 //access to things like the session store and user store.
 func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+		case http.MethodPost:
+			if err := checkJSONType(w, r); err != nil {
+				return
+			}
+			newUser := users.NewUser{}
+			if err := json.NewDecoder(r.Body).Decode(newUser); err != nil {
+				http.Error(w, fmt.Sprintf("error decoding into new user: %v", err), http.StatusBadRequest)
+				return
+			}
+			if err := newUser.Validate(); err != nil {
+				http.Error(w, fmt.Sprintf("invalid data for new user: %v", err), http.StatusBadRequest)
+				return
+			}
+			newToUser, err := newUser.ToUser()
+			if err != nil {
+				http.Error(w, fmt.Sprintf("error converting new user to user: %v", err), http.StatusInternalServerError)
+				return
+			}
+			user, err := ctx.usersStore.Insert(newToUser)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("error inserting user into database: %v", err), http.StatusInternalServerError)
+				return
+			}
+			_, err = sessions.BeginSession(ctx.signingKey, ctx.sessionStore, &SessionState{}, w)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("error beginning session: %v", err), http.StatusInternalServerError)
+				return
+			}
+			respond(w, user, http.StatusCreated)
 
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
 }
 
 func (ctx *Context) SpecificUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -23,9 +56,7 @@ func (ctx *Context) SpecificUserHandler(w http.ResponseWriter, r *http.Request) 
 func (ctx *Context) SessionsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		contentType := r.Header.Get("Content-type")
-		if contentType != contentTypeJSON {
-			http.Error(w, fmt.Sprintf("request body must be in JSON"), http.StatusUnsupportedMediaType)
+		if err := checkJSONType(w, r); err != nil {
 			return
 		}
 		cred := users.Credentials{}
@@ -41,7 +72,11 @@ func (ctx *Context) SessionsHandler(w http.ResponseWriter, r *http.Request) {
 		if err := user.Authenticate(cred.Password); err != nil {
 			http.Error(w, fmt.Sprintf("invalid credentials"), http.StatusUnauthorized)
 		}
-		sessions.BeginSession(ctx.signingKey, ctx.sessionStore, &SessionState{}, w)
+		_, err = sessions.BeginSession(ctx.signingKey, ctx.sessionStore, &SessionState{}, w)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error beginning session: %v", err), http.StatusInternalServerError)
+			return
+		}
 		respond(w, user, http.StatusCreated)
 
 	default:
