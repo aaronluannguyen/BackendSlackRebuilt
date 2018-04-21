@@ -6,8 +6,8 @@ import (
 	"log"
 )
 
-func respond(w http.ResponseWriter, value interface{}, statusCode int) {
-	w.Header().Add(headerContentType, contentTypeJSON)
+func respond(w http.ResponseWriter, contentType string, value interface{}, statusCode int) {
+	w.Header().Add(headerContentType, contentType)
 	w.WriteHeader(statusCode)
 	if err := json.NewEncoder(w).Encode(value); err != nil {
 		log.Printf("error encoding JSON: %V", err)

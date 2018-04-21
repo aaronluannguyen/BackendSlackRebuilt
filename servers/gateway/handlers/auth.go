@@ -42,7 +42,7 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, fmt.Sprintf("error beginning session: %v", err), http.StatusInternalServerError)
 				return
 			}
-			respond(w, user, http.StatusCreated)
+			respond(w, contentTypeJSON, user, http.StatusCreated)
 
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -77,7 +77,7 @@ func (ctx *Context) SessionsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("error beginning session: %v", err), http.StatusInternalServerError)
 			return
 		}
-		respond(w, user, http.StatusCreated)
+		respond(w, contentTypeJSON, user, http.StatusCreated)
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
