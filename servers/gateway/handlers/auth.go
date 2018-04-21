@@ -7,6 +7,8 @@ import (
 	"github.com/challenges-aaronluannguyen/servers/gateway/models/users"
 	"github.com/challenges-aaronluannguyen/servers/gateway/sessions"
 	"path"
+	"strconv"
+	"time"
 )
 
 //TODO: define HTTP handler functions as described in the
@@ -38,7 +40,11 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, fmt.Sprintf("error inserting user into database: %v", err), http.StatusInternalServerError)
 				return
 			}
-			_, err = sessions.BeginSession(ctx.signingKey, ctx.sessionStore, &SessionState{}, w)
+			newSessionState := SessionState{
+				time.Now(),
+				user,
+			}
+			_, err = sessions.BeginSession(ctx.signingKey, ctx.sessionStore, newSessionState, w)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("error beginning session: %v", err), http.StatusInternalServerError)
 				return
@@ -48,11 +54,52 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
-		}
+	}
 }
 
 func (ctx *Context) SpecificUserHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+		case http.MethodGet:
+			userID, err := strconv.Atoi(path.Base(r.URL.Path))
+			if err != nil {
+				http.Error(w, fmt.Sprintf("error getting user id: %v", err), http.StatusBadRequest)
+				return
+			}
+			user, err := ctx.usersStore.GetByID(int64(userID))
+			if err != nil {
+				http.Error(w, "no user found", http.StatusNotFound)
+				return
+			}
+			respond(w, contentTypeJSON, user, http.StatusOK)
 
+		case http.MethodPatch:
+			userIDAsString := path.Base(r.URL.Path)
+			userID, err := strconv.Atoi(userIDAsString)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("error getting user id: %v", err), http.StatusBadRequest)
+				return
+			}
+			currentState := &SessionState{}
+			_, err = sessions.GetState(r, ctx.signingKey, ctx.sessionStore, currentState)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("error getting session state: %v", err), http.StatusInternalServerError)
+				return
+			}
+			if userIDAsString != "me" || int64(userID) != currentState.user.ID {
+				http.Error(w,"not authorized, action is forbidden", http.StatusForbidden)
+				return
+			}
+			if err = checkJSONType(w, r); err != nil {
+				http.Error(w, fmt.Sprintf("error: request body must contain json: %v", err), http.StatusUnsupportedMediaType)
+				return
+			}
+			userUpdate := users.Updates{}
+			respond(w, contentTypeJSON, userUpdate, http.StatusOK)
+
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+	}
 }
 
 func (ctx *Context) SessionsHandler(w http.ResponseWriter, r *http.Request) {
