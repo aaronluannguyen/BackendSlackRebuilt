@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/challenges-aaronluannguyen/servers/gateway/models/users"
 	"github.com/challenges-aaronluannguyen/servers/gateway/sessions"
+	"path"
 )
 
 //TODO: define HTTP handler functions as described in the
@@ -46,6 +47,7 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
 		}
 }
 
@@ -55,35 +57,52 @@ func (ctx *Context) SpecificUserHandler(w http.ResponseWriter, r *http.Request) 
 
 func (ctx *Context) SessionsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
-	case http.MethodPost:
-		if err := checkJSONType(w, r); err != nil {
-			return
-		}
-		cred := users.Credentials{}
-		if err := json.NewDecoder(r.Body).Decode(cred); err != nil {
-			http.Error(w, fmt.Sprintf("error decoding into credentials: %v", err), http.StatusBadRequest)
-			return
-		}
-		user, err := ctx.usersStore.GetByEmail(cred.Email)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("invalid credentials"), http.StatusUnauthorized)
-			return
-		}
-		if err := user.Authenticate(cred.Password); err != nil {
-			http.Error(w, fmt.Sprintf("invalid credentials"), http.StatusUnauthorized)
-		}
-		_, err = sessions.BeginSession(ctx.signingKey, ctx.sessionStore, &SessionState{}, w)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("error beginning session: %v", err), http.StatusInternalServerError)
-			return
-		}
-		respond(w, contentTypeJSON, user, http.StatusCreated)
+		case http.MethodPost:
+			if err := checkJSONType(w, r); err != nil {
+				return
+			}
+			cred := users.Credentials{}
+			if err := json.NewDecoder(r.Body).Decode(cred); err != nil {
+				http.Error(w, fmt.Sprintf("error decoding into credentials: %v", err), http.StatusBadRequest)
+				return
+			}
+			user, err := ctx.usersStore.GetByEmail(cred.Email)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("invalid credentials"), http.StatusUnauthorized)
+				return
+			}
+			if err := user.Authenticate(cred.Password); err != nil {
+				http.Error(w, fmt.Sprintf("invalid credentials"), http.StatusUnauthorized)
+			}
+			_, err = sessions.BeginSession(ctx.signingKey, ctx.sessionStore, &SessionState{}, w)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("error beginning session: %v", err), http.StatusInternalServerError)
+				return
+			}
+			respond(w, contentTypeJSON, user, http.StatusCreated)
 
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
 	}
 }
 
 func (ctx *Context) SpecificSessionHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+		case http.MethodDelete:
+			if path.Base(r.URL.Path) != "mine" {
+				http.Error(w, "not authorized to delete current session", http.StatusForbidden)
+				return
+			}
+			_, err := sessions.EndSession(r, ctx.signingKey, ctx.sessionStore)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("error ending session: %v", err), http.StatusInternalServerError)
+				return
+			}
+			w.Write([]byte("signed out"))
 
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+	}
 }
