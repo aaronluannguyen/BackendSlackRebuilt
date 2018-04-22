@@ -9,6 +9,6 @@ import (
 //see the assignment description for the fields you should include
 //remember that other packages can only see exported fields!
 type SessionState struct {
-	time 	time.Time 		`json: "time"`
-	user 	*users.User 		`json: "user"`
+	Time time.Time `json:"time,omitempty"`
+	User *users.User `json:"user,omitempty"`
 }

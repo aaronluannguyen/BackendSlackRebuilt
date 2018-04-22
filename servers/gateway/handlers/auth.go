@@ -40,7 +40,7 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, fmt.Sprintf("error inserting user into database: %v", err), http.StatusInternalServerError)
 				return
 			}
-			newSessionState := SessionState{
+			newSessionState := &SessionState{
 				time.Now(),
 				user,
 			}
@@ -73,36 +73,38 @@ func (ctx *Context) SpecificUserHandler(w http.ResponseWriter, r *http.Request) 
 			respond(w, contentTypeJSON, user, http.StatusOK)
 
 		case http.MethodPatch:
-			currentState := SessionState{}
+			currentState := &SessionState{}
 			_, err := sessions.GetState(r, ctx.SigningKey, ctx.SessionStore, currentState)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("error getting session state: %v", err), http.StatusInternalServerError)
 				return
 			}
+			var userID int64
 			userIDAsString := path.Base(r.URL.Path)
 			if userIDAsString != "me" {
-				userID, err := strconv.Atoi(userIDAsString)
+				userID, err = strconv.ParseInt(userIDAsString, 10, 64)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("error getting user id: %v", err), http.StatusBadRequest)
 					return
 				}
-				if int64(userID) != currentState.user.ID {
+				if int64(userID) != currentState.User.ID {
 					http.Error(w,"not authorized, action is forbidden", http.StatusForbidden)
 					return
 				}
+			} else {
+				userID = currentState.User.ID
 			}
 			if err := checkJSONType(w, r); err != nil {
 				http.Error(w, fmt.Sprintf("error: request body must contain json: %v", err), http.StatusUnsupportedMediaType)
 				return
 			}
-			userUpdate := users.Updates{}
+			userUpdate := &users.Updates{}
 			if err := json.NewDecoder(r.Body).Decode(userUpdate); err != nil {
 				http.Error(w, fmt.Sprintf("error decoding into credentials: %v", err), http.StatusBadRequest)
 				return
 			}
-			currentState.user.FirstName = userUpdate.FirstName
-			currentState.user.LastName = userUpdate.LastName
-			respond(w, contentTypeJSON, currentState.user, http.StatusOK)
+			_, err = ctx.UsersStore.Update(userID, userUpdate)
+			respond(w, contentTypeJSON, currentState.User, http.StatusOK)
 
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
