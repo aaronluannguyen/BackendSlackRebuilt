@@ -18,10 +18,19 @@ const allowHeadersCORS = "Access-Control-Allow-Headers"
 const exposeHeadersCORS = "Access-Control-Expose-Headers"
 const maxAgeCORS = "Access-Control-Max-Age"
 
-func corsHandler(w http.ResponseWriter) {
+type HandlerCORS struct {
+	handler http.Handler
+}
+
+func (hc *HandlerCORS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add(headerCORS, "*")
 	w.Header().Add(methodsCORS, "GET, PUT, POST, PATCH, DELETE")
 	w.Header().Add(allowHeadersCORS, "Content-Type, Authorization")
 	w.Header().Add(exposeHeadersCORS, "Authorization")
 	w.Header().Add(maxAgeCORS, "600")
+	hc.handler.ServeHTTP(w, r)
+}
+
+func WrappedCORSHandler(hToWrap http.Handler) *HandlerCORS {
+	return &HandlerCORS{hToWrap}
 }
