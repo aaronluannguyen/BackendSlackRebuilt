@@ -12,7 +12,7 @@ import (
 //and verifying SessionIDs, the session store
 //and the user store
 type Context struct {
-	signingKey		string
-	sessionStore 	sessions.Store
-	usersStore 		users.Store
+	SigningKey		string
+	SessionStore 	sessions.Store
+	UsersStore 		users.Store
 }

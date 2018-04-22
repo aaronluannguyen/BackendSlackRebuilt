@@ -21,7 +21,7 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 			if err := checkJSONType(w, r); err != nil {
 				return
 			}
-			newUser := users.NewUser{}
+			newUser := &users.NewUser{}
 			if err := json.NewDecoder(r.Body).Decode(newUser); err != nil {
 				http.Error(w, fmt.Sprintf("error decoding into new user: %v", err), http.StatusBadRequest)
 				return
@@ -35,7 +35,7 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, fmt.Sprintf("error converting new user to user: %v", err), http.StatusInternalServerError)
 				return
 			}
-			user, err := ctx.usersStore.Insert(newToUser)
+			user, err := ctx.UsersStore.Insert(newToUser)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("error inserting user into database: %v", err), http.StatusInternalServerError)
 				return
@@ -44,7 +44,7 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 				time.Now(),
 				user,
 			}
-			_, err = sessions.BeginSession(ctx.signingKey, ctx.sessionStore, newSessionState, w)
+			_, err = sessions.BeginSession(ctx.SigningKey, ctx.SessionStore, newSessionState, w)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("error beginning session: %v", err), http.StatusInternalServerError)
 				return
@@ -65,7 +65,7 @@ func (ctx *Context) SpecificUserHandler(w http.ResponseWriter, r *http.Request) 
 				http.Error(w, fmt.Sprintf("error getting user id: %v", err), http.StatusBadRequest)
 				return
 			}
-			user, err := ctx.usersStore.GetByID(int64(userID))
+			user, err := ctx.UsersStore.GetByID(int64(userID))
 			if err != nil {
 				http.Error(w, "no user found", http.StatusNotFound)
 				return
@@ -73,28 +73,36 @@ func (ctx *Context) SpecificUserHandler(w http.ResponseWriter, r *http.Request) 
 			respond(w, contentTypeJSON, user, http.StatusOK)
 
 		case http.MethodPatch:
-			userIDAsString := path.Base(r.URL.Path)
-			userID, err := strconv.Atoi(userIDAsString)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("error getting user id: %v", err), http.StatusBadRequest)
-				return
-			}
-			currentState := &SessionState{}
-			_, err = sessions.GetState(r, ctx.signingKey, ctx.sessionStore, currentState)
+			currentState := SessionState{}
+			_, err := sessions.GetState(r, ctx.SigningKey, ctx.SessionStore, currentState)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("error getting session state: %v", err), http.StatusInternalServerError)
 				return
 			}
-			if userIDAsString != "me" || int64(userID) != currentState.user.ID {
-				http.Error(w,"not authorized, action is forbidden", http.StatusForbidden)
-				return
+			userIDAsString := path.Base(r.URL.Path)
+			if userIDAsString != "me" {
+				userID, err := strconv.Atoi(userIDAsString)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("error getting user id: %v", err), http.StatusBadRequest)
+					return
+				}
+				if int64(userID) != currentState.user.ID {
+					http.Error(w,"not authorized, action is forbidden", http.StatusForbidden)
+					return
+				}
 			}
-			if err = checkJSONType(w, r); err != nil {
+			if err := checkJSONType(w, r); err != nil {
 				http.Error(w, fmt.Sprintf("error: request body must contain json: %v", err), http.StatusUnsupportedMediaType)
 				return
 			}
 			userUpdate := users.Updates{}
-			respond(w, contentTypeJSON, userUpdate, http.StatusOK)
+			if err := json.NewDecoder(r.Body).Decode(userUpdate); err != nil {
+				http.Error(w, fmt.Sprintf("error decoding into credentials: %v", err), http.StatusBadRequest)
+				return
+			}
+			currentState.user.FirstName = userUpdate.FirstName
+			currentState.user.LastName = userUpdate.LastName
+			respond(w, contentTypeJSON, currentState.user, http.StatusOK)
 
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -106,22 +114,24 @@ func (ctx *Context) SessionsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 		case http.MethodPost:
 			if err := checkJSONType(w, r); err != nil {
+				http.Error(w, fmt.Sprintf("request body must be json type error: %v", err), http.StatusBadRequest)
 				return
 			}
-			cred := users.Credentials{}
+			cred := &users.Credentials{}
 			if err := json.NewDecoder(r.Body).Decode(cred); err != nil {
 				http.Error(w, fmt.Sprintf("error decoding into credentials: %v", err), http.StatusBadRequest)
 				return
 			}
-			user, err := ctx.usersStore.GetByEmail(cred.Email)
+			user, err := ctx.UsersStore.GetByEmail(cred.Email)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("invalid credentials"), http.StatusUnauthorized)
 				return
 			}
 			if err := user.Authenticate(cred.Password); err != nil {
 				http.Error(w, fmt.Sprintf("invalid credentials"), http.StatusUnauthorized)
+				return
 			}
-			_, err = sessions.BeginSession(ctx.signingKey, ctx.sessionStore, &SessionState{}, w)
+			_, err = sessions.BeginSession(ctx.SigningKey, ctx.SessionStore, &SessionState{}, w)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("error beginning session: %v", err), http.StatusInternalServerError)
 				return
@@ -141,7 +151,7 @@ func (ctx *Context) SpecificSessionHandler(w http.ResponseWriter, r *http.Reques
 				http.Error(w, "not authorized to delete current session", http.StatusForbidden)
 				return
 			}
-			_, err := sessions.EndSession(r, ctx.signingKey, ctx.sessionStore)
+			_, err := sessions.EndSession(r, ctx.SigningKey, ctx.SessionStore)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("error ending session: %v", err), http.StatusInternalServerError)
 				return

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"crypto/md5"
 	"golang.org/x/crypto/bcrypt"
+	"encoding/hex"
 )
 
 //gravatarBasePhotoURL is the base URL for Gravatar image requests.
@@ -103,10 +104,7 @@ func (nu *NewUser) ToUser() (*User, error) {
 		FirstName: nu.FirstName,
 		LastName: nu.LastName,
 	}
-	photoURL:= getGravatarURL(nu.Email)
-	if err != nil {
-		return nil, err
-	}
+	photoURL := getGravatarURL(nu.Email)
 	userNew.PhotoURL = photoURL
 
 	//TODO: also call .SetPassword() to set the PassHash
@@ -170,6 +168,6 @@ func getGravatarURL (email string) (string) {
 	trimmedEmail := strings.TrimSpace(email)
 	hash := md5.New()
 	hash.Write([]byte(trimmedEmail))
-	gravatarURL := gravatarBasePhotoURL + string(hash.Sum(nil))
+	gravatarURL := gravatarBasePhotoURL + hex.EncodeToString(hash.Sum(nil))
 	return gravatarURL
 }
