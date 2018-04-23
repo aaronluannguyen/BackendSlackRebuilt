@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-docker rm -f summaryserver
-docker pull aaronluannguyen/summary-server
-docker run -d --name summaryserver \
+docker rm -f gatewayinfo344
+docker pull aaronluannguyen/gatewayinfo344
+docker run -d --name gatewayinfo344 \
 -p 443:443 \
 -v /etc/letsencrypt:/etc/letsencrypt:ro \
 -e TLSCERT=/etc/letsencrypt/live/api.aaronnluannguyen.me/fullchain.pem \
 -e TLSKEY=/etc/letsencrypt/live/api.aaronnluannguyen.me/privkey.pem \
-aaronluannguyen/summary-server
+aaronluannguyen/gatewayinfo344
