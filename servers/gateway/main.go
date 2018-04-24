@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"log"
 	"github.com/challenges-aaronluannguyen/servers/gateway/handlers"
-	"github.com/go-sql-driver/mysql"
 	"database/sql"
 	"github.com/challenges-aaronluannguyen/servers/gateway/sessions"
 	"github.com/challenges-aaronluannguyen/servers/gateway/models/users"
 	"github.com/go-redis/redis"
 	"time"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func reqEnv(name string) string {
@@ -37,23 +37,14 @@ func main() {
 
 	sessionKey := reqEnv("SESSIONKEY")
 	redisADDR := reqEnv("REDISADDR")
-	mysqlAddr := reqEnv("MYSQL_ADDR")
-	mysqlDB := reqEnv("MYSQL_DATABASE")
-	mysqlPwd := reqEnv("MYSQL_ROOT_PASSWORD")
+	dsn := reqEnv("DSN")
 
 	addr := os.Getenv("ADDR")
 	if len(addr) == 0 {
 		addr = ":443"
 	}
 
-	DSN := mysql.Config{
-		Addr: mysqlAddr,
-		User: "root",
-		Passwd: mysqlPwd,
-		Net: "tcp",
-		DBName: mysqlDB,
-	}
-	db, err := sql.Open("mysql", DSN.FormatDSN())
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatalf("error opening database: %v", err)
 	}
