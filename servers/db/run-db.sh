@@ -23,9 +23,14 @@ fi
 
 # run the container
 docker build -t aaronluannguyen/usersdb .
+docker push aaronluannguyen/usersdb
+docker rm -f usersdb
+docker pull aaronluannguyen/usersdb
+docker network rm aaronchatnet
+docker network create aaronchatnet
 docker run -d \
+--network aaronchatnet \
 --name $CONTAINER_NAME \
--p 127.0.0.1:3306:3306 \
 -e MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD \
 -e MYSQL_DATABASE=$MYSQL_DATABASE \
 aaronluannguyen/usersdb
