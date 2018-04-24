@@ -7,7 +7,7 @@ export default class MainView extends React.Component {
     render() {
         return (
             <div>
-
+                Main Temp
             </div>
         );
     }
