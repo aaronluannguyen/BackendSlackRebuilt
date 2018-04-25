@@ -20,20 +20,19 @@ export default class SignUpView extends React.Component {
         evt.preventDefault();
 
         fetch(
-            AJAX.signIn,
+            `${AJAX.signIn}`,
             {
                 method: "POST",
                 headers: {
-                    "Accept": AJAX.jsonApplication,
-                    "Content-Type": AJAX.jsonApplication,
+                    "Content-Type": `${AJAX.jsonApplication}`
                 },
                 body: JSON.stringify({
-                    email: this.state.userEmail,
-                    password: this.state.userPassword,
-                    passwordConf: this.state.userPasswordConf,
-                    userName: this.state.username,
-                    firstName: this.state.firstName,
-                    lastName: this.state.lastName
+                    email: `${this.state.userEmail}`,
+                    password: `${this.state.userPassword}`,
+                    passwordConf: `${this.state.userPasswordConf}`,
+                    userName: `${this.state.username}`,
+                    firstName: `${this.state.firstName}`,
+                    lastName: `${this.state.lastName}`
                 })
             }
         ).then(res => {

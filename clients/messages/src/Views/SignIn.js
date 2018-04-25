@@ -9,39 +9,38 @@ export default class SignInView extends React.Component {
 
         this.state = {
             userEmail: "",
-            userPassword: ""
+            userPassword: "",
+            localStorage: window.localStorage
         }
     }
 
-    handleSignIn(evt) {
-        evt.preventDefault();
-
-        fetch(
-            AJAX.signIn,
-            {
-                method: "POST",
+    handleSignIn() {
+        fetch(`${AJAX.signIn}`, {
+                method: 'POST',
+                body: JSON.stringify(
+                    {
+                        email: `${this.state.userEmail}`,
+                        password: `${this.state.userPassword}`
+                    }
+                ),
                 headers: {
-                    "Accept": AJAX.jsonApplication,
-                    "Content-Type": AJAX.jsonApplication,
-                },
-                body: JSON.stringify({
-                    email: this.state.email,
-                    password: this.state.password,
-                })
+                    'Content-Type': `${AJAX.jsonApplication}`
+                }
             }
         ).then(res => {
-
-        })
-        .then(
-            (result) => {
-
-            },
-            (error) => {
-
+            if (res.status < 300) {
+                let authContent = res.headers.get("Authorization");
+                this.state.localStorage.setItem("Authorization", authContent);
+                this.props.history.push(ROUTES.generalChannel);
             }
-        )
+        })
+        .catch(err => {
+            window.alert(err)
+        });
+    }
 
-        this.props.history.push(ROUTES.generalChannel);
+    handleSubmit(evt) {
+        evt.preventDefault();
     }
 
     render() {
@@ -53,12 +52,12 @@ export default class SignInView extends React.Component {
                 <div className="col s8">
                     <div id="form-container" className="container">
                         <div className="row">
-                            <form className="col s8" onSubmit={(evt) => this.handleSignIn(evt)}>
+                            <form className="col s8" onSubmit={this.handleSubmit}>
                                 <div className="row">
                                     <div className="input-field col s12">
                                         <input id="email" type="email" className="validate"
-                                            value={this.state.email}
-                                            onInput={evt => this.setState({email: evt.target.value})}
+                                            value={this.state.userEmail}
+                                            onInput={evt => this.setState({userEmail: evt.target.value})}
                                         />
                                         <label htmlFor="email">Email</label>
                                     </div>
@@ -66,8 +65,8 @@ export default class SignInView extends React.Component {
                                 <div className="row">
                                     <div className="input-field col s12">
                                         <input id="password" type="password" className="validate"
-                                           value={this.state.password}
-                                           onInput={evt => this.setState({password: evt.target.value})}
+                                           value={this.state.userPassword}
+                                           onInput={evt => this.setState({userPassword: evt.target.value})}
                                         />
                                         <label htmlFor="password">Password</label>
                                     </div>

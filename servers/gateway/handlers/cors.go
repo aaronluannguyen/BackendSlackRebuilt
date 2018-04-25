@@ -28,7 +28,11 @@ func (hc *HandlerCORS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add(allowHeadersCORS, "Content-Type, Authorization")
 	w.Header().Add(exposeHeadersCORS, "Authorization")
 	w.Header().Add(maxAgeCORS, "600")
-	hc.handler.ServeHTTP(w, r)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		hc.handler.ServeHTTP(w, r)
+	}
 }
 
 func WrappedCORSHandler(hToWrap http.Handler) *HandlerCORS {

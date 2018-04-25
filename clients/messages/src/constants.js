@@ -6,10 +6,10 @@ export const ROUTES = {
 }
 
 export const AJAX = {
-    base: "api.aaronluannguyen.me/v1/",
-    signUp: AJAX.base + "users",
-    signIn: AJAX.base + "users/",
-    signOut: AJAX.base + "sessions/mine",
-    updateFLName: AJAX.base + "users/",
+    base: "https://api.aaronluannguyen.me/v1/",
+    signUp: "https://api.aaronluannguyen.me/v1/users",
+    signIn: "https://api.aaronluannguyen.me/v1/sessions",
+    signOut: "https://api.aaronluannguyen.me/v1/sessions/mine",
+    updateFLName: "https://api.aaronluannguyen.me/v1/users/",
     jsonApplication: "application/json"
 }
