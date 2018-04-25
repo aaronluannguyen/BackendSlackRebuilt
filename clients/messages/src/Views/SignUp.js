@@ -17,9 +17,7 @@ export default class SignInView extends React.Component {
         }
     }
 
-    handleSignIn() {
-        console.log(this.state.userPassword)
-        console.log(this.state.userPasswordConf)
+    handleSignUn() {
         fetch(`${AJAX.signUp}`, {
                 method: 'POST',
                 body: JSON.stringify(
@@ -46,6 +44,9 @@ export default class SignInView extends React.Component {
                 } else {
                     throw res
                 }
+            })
+            .then(resJson => {
+                localStorage.setItem("id", resJson.id);
             })
             .catch(error => {
                 error.text().then(errMsg => {
@@ -127,8 +128,8 @@ export default class SignInView extends React.Component {
                                 undefined
                         }
                         <div>
-                            <a className="waves-effect waves-light btn-large" onClick={() => this.handleSignIn()}>Sign In</a>
-                            Don't have an account yet? <Link to={ROUTES.signUp}> Sign Up </Link>
+                            <a className="waves-effect waves-light btn-large" onClick={() => this.handleSignUn()}>Sign Up</a>
+                            Don't have an account yet? <Link to={ROUTES.signIn}> Sign In </Link>
                         </div>
                     </div>
                 </div>

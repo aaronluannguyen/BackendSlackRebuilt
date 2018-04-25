@@ -8,23 +8,29 @@ export default class SignInView extends React.Component {
         super(props);
 
         this.state = {
+            checkActiveSession: true,
             userEmail: "",
             userPassword: ""
         }
     }
 
-    componentWillMount() {
-        let url = AJAX.updateFLName + window.localStorage.getItem("id");
-        fetch(url, {
-            method: 'GET'
-        })
-        .then(res => res.json())
-        .then(this.props.history.push(ROUTES.generalChannel))
-        .catch(err => {
-            if (err) {
-
-            }
-        })
+    componentDidMount() {
+        if (this.state.checkActiveSession) {
+            let url = AJAX.updateFLName + window.localStorage.getItem("id");
+            fetch(url, {
+                method: 'GET'
+            })
+                .then(res => res.json())
+                .then(resJson => {
+                    if (resJson) {
+                        this.props.history.push(ROUTES.generalChannel)
+                    }
+                })
+                .catch(err => err)
+                .then(() => {
+                    this.setState({checkActiveSession: false})
+                });
+        }
     }
 
     handleSignIn() {
@@ -46,16 +52,12 @@ export default class SignInView extends React.Component {
                 let authContent = res.headers.get("Authorization");
                 window.localStorage.setItem("Authorization", authContent);
                 return res.json()
-            } else {
-                throw res
             }
+            throw res
         })
         .then(resJson => {
             window.localStorage.setItem("id", resJson.id);
-            window.localStorage.setItem("username", resJson.userName);
-            window.localStorage.setItem("firstName", resJson.firstName);
-            window.localStorage.setItem("lastName", resJson.lastName);
-            this.props.history.push(ROUTES.generalChannel);
+            this.props.history.push(ROUTES.generalChannel)
         })
         .catch(error => {
            error.text().then(errMsg => {
