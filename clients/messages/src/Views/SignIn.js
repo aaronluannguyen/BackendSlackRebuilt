@@ -9,8 +9,7 @@ export default class SignInView extends React.Component {
 
         this.state = {
             userEmail: "",
-            userPassword: "",
-            localStorage: window.localStorage
+            userPassword: ""
         }
     }
 
@@ -27,15 +26,21 @@ export default class SignInView extends React.Component {
                     'Content-Type': `${AJAX.jsonApplication}`
                 }
             }
-        ).then(res => {
+        ).then(
+            (res) => {
             if (res.status < 300) {
                 let authContent = res.headers.get("Authorization");
-                this.state.localStorage.setItem("Authorization", authContent);
+                localStorage.setItem("Authorization", authContent);
                 this.props.history.push(ROUTES.generalChannel);
+                return res.json()
+            } else {
+                throw res
             }
         })
-        .catch(err => {
-            window.alert(err)
+        .catch(error => {
+           error.text().then(errMsg => {
+               this.setState({error: errMsg})
+           })
         });
     }
 
@@ -46,10 +51,7 @@ export default class SignInView extends React.Component {
     render() {
         return (
             <div className="row">
-                <div className="col s4">
-
-                </div>
-                <div className="col s8">
+                <div className="col s12">
                     <div id="form-container" className="container">
                         <div className="row">
                             <form className="col s8" onSubmit={this.handleSubmit}>
@@ -73,6 +75,13 @@ export default class SignInView extends React.Component {
                                 </div>
                             </form>
                         </div>
+                        {
+                            this.state.error ?
+                                <div className="alert alert-danger">
+                                    {this.state.error}
+                                </div> :
+                                undefined
+                        }
                         <div>
                             <a className="waves-effect waves-light btn-large" onClick={() => this.handleSignIn()}>Sign In</a>
                             Don't have an account yet? <Link to={ROUTES.signUp}> Sign Up </Link>

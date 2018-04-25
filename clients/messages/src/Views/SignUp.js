@@ -1,8 +1,9 @@
 import React from "react";
 import {Link} from "react-router-dom";
-import {AJAX, ROUTES} from "../constants"
+import {ROUTES} from "../constants"
+import {AJAX} from "../constants";
 
-export default class SignUpView extends React.Component {
+export default class SignInView extends React.Component {
     constructor(props) {
         super(props);
 
@@ -16,71 +17,75 @@ export default class SignUpView extends React.Component {
         }
     }
 
-    handleSignUp(evt) {
-        evt.preventDefault();
-
-        fetch(
-            `${AJAX.signIn}`,
-            {
-                method: "POST",
+    handleSignIn() {
+        console.log(this.state.userPassword)
+        console.log(this.state.userPasswordConf)
+        fetch(`${AJAX.signUp}`, {
+                method: 'POST',
+                body: JSON.stringify(
+                    {
+                        email: `${this.state.userEmail}`,
+                        password: `${this.state.userPassword}`,
+                        passwordConf: `${this.state.userPasswordConf}`,
+                        userName: `${this.state.username}`,
+                        firstName: `${this.state.firstName}`,
+                        lastName: `${this.state.lastName}`
+                    }
+                ),
                 headers: {
-                    "Content-Type": `${AJAX.jsonApplication}`
-                },
-                body: JSON.stringify({
-                    email: `${this.state.userEmail}`,
-                    password: `${this.state.userPassword}`,
-                    passwordConf: `${this.state.userPasswordConf}`,
-                    userName: `${this.state.username}`,
-                    firstName: `${this.state.firstName}`,
-                    lastName: `${this.state.lastName}`
-                })
-            }
-        ).then(res => {
-
-        })
-            .then(
-                (result) => {
-
-                },
-                (error) => {
-
+                    'Content-Type': `${AJAX.jsonApplication}`
                 }
-            )
+            }
+        ).then(
+            (res) => {
+                if (res.status < 300) {
+                    let authContent = res.headers.get("Authorization");
+                    localStorage.setItem("Authorization", authContent);
+                    this.props.history.push(ROUTES.generalChannel);
+                    return res.json()
+                } else {
+                    throw res
+                }
+            })
+            .catch(error => {
+                error.text().then(errMsg => {
+                    this.setState({error: errMsg})
+                })
+            });
+    }
 
-        this.props.history.push(ROUTES.generalChannel);
+    handleSubmit(evt) {
+        evt.preventDefault();
     }
 
     render() {
         return (
             <div className="row">
-                <div className="col s4">
-
-                </div>
-                <div className="col s8">
+                <div className="col s12">
                     <div id="form-container" className="container">
                         <div className="row">
-                            <form className="col s12" onSubmit={(evt) => this.handleSignUp(evt)}>
+                            <form className="col s8" onSubmit={this.handleSubmit}>
                                 <div className="row">
                                     <div className="input-field col s6">
-                                        <input id="first_name" type="text" className="validate"
-                                           value={this.state.firstName}
-                                           onInput={evt => this.setState({firstName: evt.target.value})}
+                                        <input id="firstName" type="text" className="validate"
+                                               value={this.state.firstName}
+                                               onInput={evt => this.setState({firstName: evt.target.value})}
                                         />
-                                        <label htmlFor="first_name">First Name</label>
+                                        <label htmlFor="text">First Name</label>
                                     </div>
                                     <div className="input-field col s6">
-                                        <input id="last_name" type="text" className="validate"
-                                           value={this.state.lastName}
-                                           onInput={evt => this.setState({lastName: evt.target.value})}
+                                        <input id="lastName" type="text" className="validate"
+                                               value={this.state.lastName}
+                                               onInput={evt => this.setState({lastName: evt.target.value})}
                                         />
-                                        <label htmlFor="last_name">Last Name</label>
+                                        <label htmlFor="text">Last Name</label>
                                     </div>
                                 </div>
                                 <div className="row">
                                     <div className="input-field col s12">
                                         <input id="email" type="email" className="validate"
-                                           value={this.state.userEmail}
-                                           onInput={evt => this.setState({userEmail: evt.target.value})}
+                                               value={this.state.userEmail}
+                                               onInput={evt => this.setState({userEmail: evt.target.value})}
                                         />
                                         <label htmlFor="email">Email</label>
                                     </div>
@@ -88,39 +93,42 @@ export default class SignUpView extends React.Component {
                                 <div className="row">
                                     <div className="input-field col s12">
                                         <input id="username" type="text" className="validate"
-                                           value={this.state.username}
-                                           onInput={evt => this.setState({username: evt.target.value})}
+                                               value={this.state.username}
+                                               onInput={evt => this.setState({username: evt.target.value})}
                                         />
-                                        <label htmlFor="username">Username</label>
+                                        <label htmlFor="password">Username</label>
                                     </div>
                                 </div>
                                 <div className="row">
                                     <div className="input-field col s12">
                                         <input id="password" type="password" className="validate"
-                                           value={this.state.userPassword}
-                                           onInput={evt => this.setState({userPassword: evt.target.value})}
+                                               value={this.state.userPassword}
+                                               onInput={evt => this.setState({userPassword: evt.target.value})}
                                         />
                                         <label htmlFor="password">Password</label>
                                     </div>
                                 </div>
                                 <div className="row">
                                     <div className="input-field col s12">
-                                        <input id="password" type="password" className="validate"
-                                           value={this.state.userPasswordConf}
-                                           onInput={evt => this.setState({email: evt.target.value})}
+                                        <input id="passwordConf" type="password" className="validate"
+                                               value={this.state.userPasswordConf}
+                                               onInput={evt => this.setState({userPasswordConf: evt.target.value})}
                                         />
-                                        <label htmlFor="password">Confirm Password</label>
+                                        <label htmlFor="password">Password Confirm</label>
                                     </div>
                                 </div>
                             </form>
                         </div>
+                        {
+                            this.state.error ?
+                                <div className="alert alert-danger">
+                                    {this.state.error}
+                                </div> :
+                                undefined
+                        }
                         <div>
-                            <div>
-                                <a className="waves-effect waves-light btn-large">Sign Up</a>
-                            </div>
-                            <div>
-                                Already have an account? <Link to={ROUTES.signIn}> Sign In </Link>
-                            </div>
+                            <a className="waves-effect waves-light btn-large" onClick={() => this.handleSignIn()}>Sign In</a>
+                            Don't have an account yet? <Link to={ROUTES.signUp}> Sign Up </Link>
                         </div>
                     </div>
                 </div>
