@@ -103,8 +103,15 @@ func (ctx *Context) SpecificUserHandler(w http.ResponseWriter, r *http.Request) 
 				http.Error(w, fmt.Sprintf("error decoding into credentials: %v", err), http.StatusBadRequest)
 				return
 			}
-			_, err = ctx.UsersStore.Update(userID, userUpdate)
-			respond(w, contentTypeJSON, currentState.User, http.StatusOK)
+			if err := currentState.User.ApplyUpdates(userUpdate); err != nil {
+				http.Error(w, fmt.Sprintf("error with updating user: %s", err), http.StatusBadRequest)
+				return
+			}
+			user, err := ctx.UsersStore.Update(userID, userUpdate)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("error updating user: %s", err), http.StatusInternalServerError)
+			}
+			respond(w, contentTypeJSON, user, http.StatusOK)
 
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
