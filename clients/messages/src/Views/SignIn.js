@@ -13,6 +13,20 @@ export default class SignInView extends React.Component {
         }
     }
 
+    componentWillMount() {
+        let url = AJAX.updateFLName + window.localStorage.getItem("id");
+        fetch(url, {
+            method: 'GET'
+        })
+        .then(res => res.json())
+        .then(this.props.history.push(ROUTES.generalChannel))
+        .catch(err => {
+            if (err) {
+
+            }
+        })
+    }
+
     handleSignIn() {
         fetch(`${AJAX.signIn}`, {
                 method: 'POST',
@@ -30,12 +44,18 @@ export default class SignInView extends React.Component {
             (res) => {
             if (res.status < 300) {
                 let authContent = res.headers.get("Authorization");
-                localStorage.setItem("Authorization", authContent);
-                this.props.history.push(ROUTES.generalChannel);
+                window.localStorage.setItem("Authorization", authContent);
                 return res.json()
             } else {
                 throw res
             }
+        })
+        .then(resJson => {
+            window.localStorage.setItem("id", resJson.id);
+            window.localStorage.setItem("username", resJson.userName);
+            window.localStorage.setItem("firstName", resJson.firstName);
+            window.localStorage.setItem("lastName", resJson.lastName);
+            this.props.history.push(ROUTES.generalChannel);
         })
         .catch(error => {
            error.text().then(errMsg => {
@@ -46,6 +66,7 @@ export default class SignInView extends React.Component {
 
     handleSubmit(evt) {
         evt.preventDefault();
+        this.handleSubmit()
     }
 
     render() {
