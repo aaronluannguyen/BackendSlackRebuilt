@@ -1,6 +1,4 @@
 # build environment
-FROM node:9-alpine as build
-COPY . .
-RUN npm install
-RUN npm run build
-
+FROM nginx
+ADD default.conf /etc/nginx/conf.d/default.conf
+COPY ./build /usr/share/nginx/html

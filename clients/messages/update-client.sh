@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-docker rm -f clientinfo344
-docker pull aaronluannguyen/clientinfo344
-docker run -d --name clientinfo344 -p 80:80 -p 443:443 -v /etc/letsencrypt:/etc/letsencrypt:ro aaronluannguyen/clientinfo344
+docker rm -f client344
+docker pull aaronluannguyen/client344
+docker run -d --name client344 -p 80:80 -p 443:443 -v /etc/letsencrypt:/etc/letsencrypt:ro aaronluannguyen/client344

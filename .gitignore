@@ -6,3 +6,4 @@ npm-debug.log
 tls
 .terraform
 /secrets
+coverage.out

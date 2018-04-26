@@ -42,6 +42,12 @@ func TestUsersHandler(t *testing.T) {
 			t.Errorf("handler returned wrong status code: got %v but expect %v", status, http.StatusMethodNotAllowed)
 		}
 	}
+
+	//ctx := &Context{
+	//	"key",
+	//	sessions.NewMemStore(time.Hour, time.Hour),
+	//
+	//}
 }
 
 func TestSpecificUserHandler(t *testing.T) {
