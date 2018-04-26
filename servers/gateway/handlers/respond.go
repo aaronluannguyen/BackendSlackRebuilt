@@ -10,6 +10,6 @@ func respond(w http.ResponseWriter, contentType string, value interface{}, statu
 	w.Header().Add(headerContentType, contentType)
 	w.WriteHeader(statusCode)
 	if err := json.NewEncoder(w).Encode(value); err != nil {
-		log.Printf("error encoding JSON: %V", err)
+		log.Printf("error encoding JSON: %v", err)
 	}
 }
