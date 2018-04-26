@@ -19,6 +19,7 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 		case http.MethodPost:
 			if err := checkJSONType(w, r); err != nil {
+				http.Error(w, fmt.Sprintf("error: request body must contain json: %v", err), http.StatusUnsupportedMediaType)
 				return
 			}
 			newUser := &users.NewUser{}
