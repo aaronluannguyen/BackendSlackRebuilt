@@ -141,7 +141,11 @@ func (ctx *Context) SessionsHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, fmt.Sprintf("invalid credentials"), http.StatusUnauthorized)
 				return
 			}
-			_, err = sessions.BeginSession(ctx.SigningKey, ctx.SessionStore, &SessionState{}, w)
+			newSessionState := &SessionState{
+				time.Now(),
+				user,
+			}
+			_, err = sessions.BeginSession(ctx.SigningKey, ctx.SessionStore, newSessionState, w)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("error beginning session: %v", err), http.StatusInternalServerError)
 				return
