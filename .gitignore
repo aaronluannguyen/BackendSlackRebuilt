@@ -3,6 +3,8 @@
 .idea
 node_modules
 npm-debug.log
+.terraform
 tls
 .terraform
 /secrets
+bash.exe.stackdump
