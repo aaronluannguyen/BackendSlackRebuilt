@@ -3,7 +3,6 @@ package sessions
 import (
 	"encoding/json"
 	"time"
-
 	"github.com/patrickmn/go-cache"
 )
 
