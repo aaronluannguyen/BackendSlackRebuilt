@@ -11,6 +11,7 @@ import (
 	"github.com/go-redis/redis"
 	"time"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/challenges-aaronluannguyen/servers/gateway/indexes"
 )
 
 func reqEnv(name string) string {
@@ -57,10 +58,12 @@ func main() {
 
 	sessionsStore := sessions.NewRedisStore(redisClient, time.Hour)
 	usersStore := users.NewMySQLStore(db)
+	trie := indexes.NewTrie()
 	hctx := handlers.Context {
-		sessionKey,
-		sessionsStore,
-		usersStore,
+		SigningKey: sessionKey,
+		SessionStore: sessionsStore,
+		UsersStore: usersStore,
+		Trie: trie,
 	}
 
 	tlsKeyPath := os.Getenv("TLSKEY")
