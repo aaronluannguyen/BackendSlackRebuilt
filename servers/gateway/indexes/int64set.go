@@ -1,5 +1,7 @@
 package indexes
 
+import "sort"
+
 //int64set is a set of int64 values
 type int64set map[int64]struct{}
 
@@ -35,5 +37,6 @@ func (s int64set) all() []int64 {
 	for k := range s {
 		result = append(result, k)
 	}
+	sort.Slice(result, func(i, j int) bool {return result[i] < result[j]})
 	return result
 }
