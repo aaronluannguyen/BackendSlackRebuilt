@@ -34,10 +34,13 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 			query := queries[0]
 
 			topTwentyUsers := ctx.Trie.Find(query, 20)
-			sortedTopUsers, err := ctx.UsersStore.SortTopTwentyUsersByUsername(topTwentyUsers)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("error retrieving top users: %v", err), http.StatusInternalServerError)
-				return
+			var sortedTopUsers *[]*users.User
+			if len(topTwentyUsers) > 0 {
+				sortedTopUsers, err = ctx.UsersStore.SortTopTwentyUsersByUsername(topTwentyUsers)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("error retrieving top users: %v", err), http.StatusInternalServerError)
+					return
+				}
 			}
 			respond(w, contentTypeJSON, sortedTopUsers, http.StatusCreated)
 
