@@ -150,8 +150,9 @@ func AddUserToTrie(trie *indexes.Trie, user *User) {
 //SortTopTwentyUsersByUsername orders the top twenty users by username and returns
 //the correct order of users
 func (s *MySQLStore) SortTopTwentyUsersByUsername(users []int64) (*[]*User, error) {
+	var sortedUsers []*User
 	if len(users) < 1 {
-		return nil, nil
+		return sortedUsers, nil
 	}
 	var queryQMarks string
 	var ids string
@@ -170,7 +171,6 @@ func (s *MySQLStore) SortTopTwentyUsersByUsername(users []int64) (*[]*User, erro
 	}
 	defer rows.Close()
 
-	var sortedUsers []*User
 	for rows.Next() {
 		user := &User{}
 		if err := rows.Scan(&user.ID, &user.Email, &user.PassHash, &user.UserName,
