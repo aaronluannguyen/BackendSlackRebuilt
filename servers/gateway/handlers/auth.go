@@ -29,6 +29,7 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 			queries, ok := r.URL.Query()["q"]
 			if !ok || len(queries) < 1 {
 				http.Error(w, "query string parameter required", http.StatusBadRequest)
+				return
 			}
 			query := queries[0]
 
@@ -36,6 +37,7 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 			sortedTopUsers, err := ctx.UsersStore.SortTopTwentyUsersByUsername(topTwentyUsers)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("error retrieving top users: %v", err), http.StatusInternalServerError)
+				return
 			}
 			respond(w, contentTypeJSON, sortedTopUsers, http.StatusCreated)
 
@@ -63,7 +65,7 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, fmt.Sprintf("error inserting user into database: %v", err), http.StatusInternalServerError)
 				return
 			}
-			users.AddUserToTrie(ctx.Trie, user)
+			users.AddUserToTrie(ctx.Trie, newToUser)
 			newSessionState := &SessionState{
 				time.Now(),
 				user,

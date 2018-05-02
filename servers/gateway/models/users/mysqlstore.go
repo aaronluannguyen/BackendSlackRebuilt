@@ -157,13 +157,13 @@ func (s *MySQLStore) SortTopTwentyUsersByUsername(users []int64) (*[]*User, erro
 		addIdString := fmt.Sprintf(", %d", id)
 		ids += addIdString
 	}
-	queryQMarks = strings.TrimPrefix(queryQMarks, ",")
-	ids = strings.TrimPrefix(ids, ",")
+	queryQMarks = strings.TrimPrefix(queryQMarks, ", ")
+	ids = strings.TrimPrefix(ids, ", ")
 	query := fmt.Sprintf("select * from users where id in (%s) order by username", queryQMarks)
 	idArg := GetIdInterface(users)
-	rows, err := s.db.Query(query, idArg)
+	rows, err := s.db.Query(query, idArg...)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving top twenty users from database: %v", err)
+		return nil, fmt.Errorf("error querying top twenty users from database: %v", err)
 	}
 	defer rows.Close()
 
@@ -184,8 +184,8 @@ func (s *MySQLStore) SortTopTwentyUsersByUsername(users []int64) (*[]*User, erro
 
 //GetIdInterface retrieves the ids and inputs them into
 //an interface for a query call
-func GetIdInterface(users []int64) interface{} {
-	args := make([]interface{}, 0 , len(users))
+func GetIdInterface(users []int64) []interface{} {
+	args := make([]interface{}, len(users))
 	for i, id := range users {
 		args[i] = id
 	}

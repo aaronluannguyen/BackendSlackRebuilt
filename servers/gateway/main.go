@@ -11,7 +11,7 @@ import (
 	"github.com/go-redis/redis"
 	"time"
 	_ "github.com/go-sql-driver/mysql"
-	"fmt"
+	"github.com/challenges-aaronluannguyen/servers/gateway/indexes"
 )
 
 func reqEnv(name string) string {
@@ -60,7 +60,7 @@ func main() {
 	usersStore := users.NewMySQLStore(db)
 	trie, err := usersStore.LoadExistingUsersToTrie()
 	if err != nil {
-		fmt.Errorf("error loading existing users into the trie")
+		trie = indexes.NewTrie()
 	}
 	hctx := handlers.Context {
 		SigningKey: sessionKey,
