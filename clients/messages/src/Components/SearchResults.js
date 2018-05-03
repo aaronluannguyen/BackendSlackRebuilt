@@ -10,7 +10,7 @@ export default class SearchResults extends React.Component {
 
         let users = [];
         this.props.results.forEach(user=> {
-            users.push(<SearchedUser key={user.id} username={user.userName} firstName={user.firstName} userInfo={user.lastName} photoUrl={user.photoURL}/>)
+            users.push(<SearchedUser key={user.id} username={user.userName} firstName={user.firstName} lastName={user.lastName} photoUrl={user.photoURL}/>)
         });
 
         return (
