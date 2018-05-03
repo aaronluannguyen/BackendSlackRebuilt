@@ -11,5 +11,6 @@ export const AJAX = {
     signIn: "https://api.aaronluannguyen.me/v1/sessions",
     signOut: "https://api.aaronluannguyen.me/v1/sessions/mine",
     updateFLName: "https://api.aaronluannguyen.me/v1/users/",
-    jsonApplication: "application/json"
+    jsonApplication: "application/json",
+    userSearch: "https://api.aaronluannguyen.me/v1/users?q="
 }

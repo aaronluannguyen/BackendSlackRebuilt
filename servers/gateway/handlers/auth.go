@@ -26,12 +26,11 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, fmt.Sprintf("unauthenticated user error: %v", err), http.StatusUnauthorized)
 				return
 			}
-			queries, ok := r.URL.Query()["q"]
-			if !ok || len(queries) < 1 {
+			query := r.URL.Query().Get("q")
+			if len(query) < 1 {
 				http.Error(w, "query string parameter required", http.StatusBadRequest)
 				return
 			}
-			query := queries[0]
 
 			topTwentyUsers := ctx.Trie.Find(query, 20)
 			var sortedTopUsers *[]*users.User
