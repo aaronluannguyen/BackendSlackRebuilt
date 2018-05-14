@@ -7,4 +7,6 @@ npm-debug.log
 tls
 .terraform
 /secrets
+coverage.out
 bash.exe.stackdump
+

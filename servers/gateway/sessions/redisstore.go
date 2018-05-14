@@ -66,7 +66,10 @@ func (rs *RedisStore) Get(sid SessionID, sessionState interface{}) error {
 	if err != nil {
 		return ErrStateNotFound
 	}
-	return json.Unmarshal([]byte(jsonSessionState), sessionState)
+	if err = json.Unmarshal([]byte(jsonSessionState), sessionState); err != nil {
+		return err
+	}
+	return nil
 }
 
 //Delete deletes all state data associated with the SessionID from the store.
