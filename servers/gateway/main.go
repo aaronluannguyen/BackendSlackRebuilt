@@ -40,6 +40,7 @@ func NewServiceProxy(addrs string) *httputil.ReverseProxy {
 			r.URL.Host = splitAddrs[nextAddr]
 			nextAddr = (nextAddr + 1) % len(splitAddrs)
 			mx.Unlock()
+			// Check if you have to handle X-User headers here
 		},
 	}
 }
