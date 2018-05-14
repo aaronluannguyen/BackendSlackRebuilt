@@ -1,5 +1,14 @@
 package users
 
+import (
+	"net/mail"
+	"fmt"
+	"strings"
+	"crypto/md5"
+	"golang.org/x/crypto/bcrypt"
+	"encoding/hex"
+)
+
 //gravatarBasePhotoURL is the base URL for Gravatar image requests.
 //See https://id.gravatar.com/site/implement/images/ for details
 const gravatarBasePhotoURL = "https://www.gravatar.com/avatar/"
@@ -51,6 +60,22 @@ func (nu *NewUser) Validate() error {
 	//use fmt.Errorf() to generate appropriate error messages if
 	//the new user doesn't pass one of the validation rules
 
+	_, err := mail.ParseAddress(nu.Email)
+	if err != nil {
+		return err
+	}
+	if len(nu.Password) < 6 {
+		return fmt.Errorf("password must be at least 6 characters")
+	}
+	if nu.Password != nu.PasswordConf {
+		return fmt.Errorf("password and passwordConf must match")
+	}
+	if len(nu.UserName) == 0 {
+		return fmt.Errorf("username cannot be length zero")
+	}
+	if strings.Contains(nu.UserName, " ") {
+		return fmt.Errorf("username cannot contain spaces")
+	}
 	return nil
 }
 
@@ -69,10 +94,26 @@ func (nu *NewUser) ToUser() (*User, error) {
 	//see https://en.gravatar.com/site/implement/hash/
 	//and https://en.gravatar.com/site/implement/images/
 
+	err := nu.Validate()
+	if err != nil {
+		return nil, err
+	}
+	userNew := &User{
+		Email: nu.Email,
+		UserName: nu.UserName,
+		FirstName: nu.FirstName,
+		LastName: nu.LastName,
+	}
+	photoURL := getGravatarURL(nu.Email)
+	userNew.PhotoURL = photoURL
+
 	//TODO: also call .SetPassword() to set the PassHash
 	//field of the User to a hash of the NewUser.Password
-
-	return nil, nil
+	err = userNew.SetPassword(nu.Password)
+	if err != nil {
+		return nil, err
+	}
+	return userNew, nil
 }
 
 //FullName returns the user's full name, in the form:
@@ -81,16 +122,19 @@ func (nu *NewUser) ToUser() (*User, error) {
 //space is put between the names. If both are missing,
 //this returns an empty string
 func (u *User) FullName() string {
-	//TODO: implement according to comment above
-
-	return ""
+	fullName := u.FirstName + " " + u.LastName
+	return strings.TrimSpace(fullName)
 }
 
 //SetPassword hashes the password and stores it in the PassHash field
 func (u *User) SetPassword(password string) error {
 	//TODO: use the bcrypt package to generate a new hash of the password
 	//https://godoc.org/golang.org/x/crypto/bcrypt
-
+	hashPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
+	if err != nil {
+		return err
+	}
+	u.PassHash = hashPassword
 	return nil
 }
 
@@ -100,7 +144,10 @@ func (u *User) Authenticate(password string) error {
 	//TODO: use the bcrypt package to compare the supplied
 	//password with the stored PassHash
 	//https://godoc.org/golang.org/x/crypto/bcrypt
-
+	err := bcrypt.CompareHashAndPassword(u.PassHash, []byte(password))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -109,6 +156,18 @@ func (u *User) Authenticate(password string) error {
 func (u *User) ApplyUpdates(updates *Updates) error {
 	//TODO: set the fields of `u` to the values of the related
 	//field in the `updates` struct
-
+	if len(updates.FirstName) == 0 || len(updates.LastName) == 0 {
+		return fmt.Errorf("invalid update: first name and/or last name is empty")
+	}
+	u.FirstName = updates.FirstName
+	u.LastName = updates.LastName
 	return nil
+}
+
+func getGravatarURL (email string) (string) {
+	trimmedEmail := strings.TrimSpace(email)
+	hash := md5.New()
+	hash.Write([]byte(trimmedEmail))
+	gravatarURL := gravatarBasePhotoURL + hex.EncodeToString(hash.Sum(nil))
+	return gravatarURL
 }
