@@ -1,7 +1,20 @@
-"use strict"
+"use strict";
+
+//SQL statements
+const SQL_SELECT_ALL_CHANNELS = "select * from channels c";
+const SQL_SELECT_ALL_CHANNELS_FOR_USER = SQL_SELECT_ALL_CHANNELS +
+                                            " join channel_user cu on cu.channelID = c.id" +
+                                            " join users u on u.id = cu.userID" +
+                                            " where (cu.userID = ? or c.private = 'false')" +
+                                            " order by c.id";
+
+const SQL_SELECT_BY_ID = SQL_SELECT_ALL + " where id=?";
+const SQL_INSERT = "insert into links (url,comment) values (?,?)";
+const SQL_UPVOTE = "update links set votes=votes+1 where id=?";
 
 const express = require("express");
 const mysql = require("mysql");
+
 
 const app = express();
 
@@ -28,6 +41,16 @@ app.get("/v1/channels", (req, res, next) => {
     if (err) {
         return next(err);
     }
+    let channels = [];
+
+    db.Query(SQL_SELECT_ALL_CHANNELS, (err, rows) => {
+        if (err) {
+            return next(err)
+        }
+        rows.forEach((row) => {
+
+        })
+    })
 });
 
 app.post("/v1/channels", (req, res, next) => {

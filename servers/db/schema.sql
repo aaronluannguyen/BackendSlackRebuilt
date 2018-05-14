@@ -20,8 +20,8 @@ create table if not exists channels (
   editedAt timestamp not null
 );
 
-create table if not exists members (
-  memberID int not null,
+create table if not exists channel_user (
+  userID int not null,
   channelID int not null
 );
 
