@@ -18,6 +18,7 @@ const SQL_SELECT_ALL_CHANNELS_FOR_USER = SQL_SELECT_ALL_CHANNELS +
                                             " order by c.id";
 const SQL_INSERT_NEW_CHANNEL = "insert into channels (name, description, private, createdAt, creatorUserID, editedAt) values (?,?,?,?,?,?)";
 const SQL_INSERT_INTO_CHANNEL_USER = "insert into channel_user (userID, channelID) values(?,?)";
+const SQL_DELETE_USER_FROM_CHANNEL = "delete from channel_user where (channelID=? and userID=?)";
 const SQL_SELECT_SPECIFIC_CHANNEL = "select * from channels c" +
                                     " join channel_user cu on cu.channelID = c.id" +
                                     " where c.id = ?";
@@ -29,6 +30,7 @@ const SQL_TOP_100_MESSAGES = "select * from channels c" +
 
 const SQL_POST_MESSAGE = "insert into messages (channelID, body, createdAt, creatorUserID, editedAt) values (?,?,?,?,?)";
 const SQL_SELECT_MESSAGE_BY_ID = "select * from messages where id=?";
+const SQL_DELETE_MESSAGE_BY_ID = "delete from messages where id?";
 
 const express = require("express");
 const mysql = require("mysql");
@@ -44,13 +46,13 @@ let db = mysql.createPool({
 });
 
 //checkUserAuth checks the x-user header to make sure the user is signed in
-function checkUserAuth(req, res) {
+function checkUserAuth(req) {
     let userJson = req.get("X-User");
     if (!userJson) {
-        return false
+        return false;
     }
     let user = JSON.parse(userJson);
-    return user
+    return user;
 }
 
 //verifyUserInChannel makes sure the user is a member of a private channel
@@ -60,24 +62,33 @@ function verifyUserInChannel(userID, channelID, next) {
             return next(err);
         }
         if (rows[0].private === false) {
-            return true
+            return true;
         }
         rows.forEach((row) => {
            if (row.userID === userID) {
-               return true
+               return true;
            }
         });
-        return false
+        return false;
     });
 }
 
 //checkUserIsCreator checks if the user is the creator of a specified channel
-function checkUserIsCreator(userID) {
-    db.query(SQL_SELECT_CHANNEL_BY_ID, [], (err, rows) => {
+function checkUserIsCreator(userID, next) {
+    db.query(SQL_SELECT_CHANNEL_BY_ID, [userID], (err, rows) => {
         if (err) {
             return next(err);
         }
-        return rows[0].creatorUserID === userID
+        return rows[0].creatorUserID === userID;
+    });
+}
+
+function checkUserIsMessageCreator(userID, messageID, next) {
+    db.query(SQL_SELECT_MESSAGE_BY_ID, [messageID], (err, rows) => {
+        if (err) {
+            return next(err);
+        }
+        return row[0].creatorUserID === userID;
     });
 }
 
@@ -85,7 +96,7 @@ app.use(express.json());
 
 // Handle Endpoint: /v1/channels
 app.get("/v1/channels", (req, res, next) => {
-    let user = checkUserAuth(req, res);
+    let user = checkUserAuth(req);
     if (user === false) {
         return res.status(401).send("Please sign in");
     }
@@ -94,7 +105,7 @@ app.get("/v1/channels", (req, res, next) => {
 
     db.Query(SQL_SELECT_ALL_CHANNELS_FOR_USER, [user.id], (err, rows) => {
         if (err) {
-            return next(err)
+            return next(err);
         }
         let members = [];
         let currChannelID = rows[0].id;
@@ -115,7 +126,7 @@ app.get("/v1/channels", (req, res, next) => {
 });
 
 app.post("/v1/channels", (req, res, next) => {
-    let user = checkUserAuth(req, res);
+    let user = checkUserAuth(req);
     if (user === false) {
         return res.status(401).send("Please sign in");
     }
@@ -126,7 +137,7 @@ app.post("/v1/channels", (req, res, next) => {
     let currTimestamp = Date.now();
     db.query(SQL_INSERT_NEW_CHANNEL, [req.body.name, req.body.description, req.body.private, currTimestamp, user.id, currTimestamp], (err, results) => {
         if (err) {
-            return next(err)
+            return next(err);
         }
         let newChannelID = results.insertId;
         if (req.body.private === true) {
@@ -148,7 +159,7 @@ app.post("/v1/channels", (req, res, next) => {
 
 // Handle Endpoint: /v1/channels/{channelID}
 app.get("/v1/channels/:channelID", (req, res, next) => {
-    let user = checkUserAuth(req, res);
+    let user = checkUserAuth(req);
     if (user === false) {
         return res.status(401).send("Please sign in");
     }
@@ -160,7 +171,7 @@ app.get("/v1/channels/:channelID", (req, res, next) => {
     let messages = [];
     db.query(SQL_TOP_100_MESSAGES, [req.params.channelID], (err, rows) => {
        if (err) {
-           return next(err)
+           return next(err);
        }
        rows.forEach((row) => {
            let message = message(row.id, row.channelID, row.body, row.createdAt, row.creator, row.editedAt);
@@ -171,7 +182,7 @@ app.get("/v1/channels/:channelID", (req, res, next) => {
 });
 
 app.post("/v1/channels/:channelID", (req, res, next) => {
-    let user = checkUserAuth(req, res);
+    let user = checkUserAuth(req);
     if (user === false) {
         return res.status(401).send("Please sign in");
     }
@@ -182,12 +193,12 @@ app.post("/v1/channels/:channelID", (req, res, next) => {
     let dateNow = Date.now();
     db.query(SQL_POST_MESSAGE, [req.params.channelID, req.body, dateNow, user.id, dateNow], (err, results) => {
         if (err) {
-            return next(err)
+            return next(err);
         }
         let newMessageID = results.insertId;
         db.query(SQL_SELECT_MESSAGE_BY_ID, [newMessageID], (err, rows) => {
             if (err) {
-                return next(err)
+                return next(err);
             }
             res.status(201);
             res.json(rows[0]);
@@ -196,11 +207,11 @@ app.post("/v1/channels/:channelID", (req, res, next) => {
 });
 
 app.patch("/v1/channels/:channelID", (req, res, next) => {
-    let user = checkUserAuth(req, res);
+    let user = checkUserAuth(req);
     if (user === false) {
         return res.status(401).send("Please sign in");
     }
-    let creatorStatus = checkUserIsCreator(user.id);
+    let creatorStatus = checkUserIsCreator(user.id, next);
     if (creatorStatus === false) {
         return res.status(403).send("Error: You are not the creator of this channel");
     }
@@ -218,11 +229,11 @@ app.patch("/v1/channels/:channelID", (req, res, next) => {
 });
 
 app.delete("/v1/channels/:channelID", (req, res, next) => {
-    let user = checkUserAuth(req, res);
+    let user = checkUserAuth(req);
     if (user === false) {
         return res.status(401).send("Please sign in");
     }
-    let creatorStatus = checkUserIsCreator(user.id);
+    let creatorStatus = checkUserIsCreator(user.id, next);
     if (creatorStatus === false) {
         return res.status(403).send("Error: You are not the creator of this channel");
     }
@@ -232,37 +243,77 @@ app.delete("/v1/channels/:channelID", (req, res, next) => {
         }
     });
     res.set("Content-Type", "text/plain");
-    res.send("Successfully deleted channel and messages in that channel")
+    res.send("Successfully deleted channel and messages in that channel");
 });
 
 // Handle Endpoint: /v1/channels/{channelID}/members
 app.post("/v1/channels/:channelID/members", (req, res, next) => {
-    let user = checkUserAuth(req, res);
+    let user = checkUserAuth(req);
     if (user === false) {
         return res.status(401).send("Please sign in");
     }
+    let creatorStatus = checkUserIsCreator(user.id, next);
+    if (creatorStatus === false) {
+        return res.status(403).send("Error: You are not the creator of this channel");
+    }
+    db.query(SQL_INSERT_INTO_CHANNEL_USER, [req.body.id, req.params.channelID], (err, rows) => {
+        if (err) {
+            return next(err);
+        }
+    });
+    res.status(201);
+    res.set("Content-Type", "text/plain");
+    res.send("Successfully added user to channel");
 });
 
 app.delete("/v1/channels/:channelID/members", (req, res, next) => {
-    let user = checkUserAuth(req, res);
+    let user = checkUserAuth(req);
     if (user === false) {
         return res.status(401).send("Please sign in");
     }
+    let creatorStatus = checkUserIsCreator(user.id, next);
+    if (creatorStatus === false) {
+        return res.status(403).send("Error: You are not the creator of this channel");
+    }
+    db.query(SQL_DELETE_USER_FROM_CHANNEL, [req.params.channelID, user.id], (err, rows) => {
+        if (err) {
+            return next(err);
+        }
+    });
+    res.status(200);
+    res.set("Content-Type", "text/plain");
+    res.send("Successfully removed user from channel");
 });
 
 // Handle Endpoint: /v1/messages/{messageID}
 app.patch("/v1/messages/:messageID", (req, res, next) => {
-    let user = checkUserAuth(req, res);
+    let user = checkUserAuth(req);
     if (user === false) {
         return res.status(401).send("Please sign in");
     }
+    let creator = checkUserIsMessageCreator(user.id, req.params.messageID, next);
+    if (creator === false) {
+        return res.status(403).send("Error: You are not the creator of this channel");
+    }
+    // FINISH LATER BUT ALSO CHECK TO SEE IF WE HAVE TO UPDATE EDITED AT FOR THIS PATCH AND CHANNEL PATCH
 });
 
 app.delete("/v1/messages/:messageID", (req, res, next) => {
-    let user = checkUserAuth(req, res);
+    let user = checkUserAuth(req);
     if (user === false) {
         return res.status(401).send("Please sign in");
     }
+    let creator = checkUserIsMessageCreator(user.id, req.params.messageID, next);
+    if (creator === false) {
+        return res.status(403).send("Error: You are not the creator of this channel");
+    }
+    db.query(SQL_DELETE_MESSAGE_BY_ID, [req.params.messageID], (err, results) => {
+        if (err) {
+            return next(err);
+        }
+    });
+    res.set("Content-Type", "text/plain");
+    res.send("Successfully deleted message");
 });
 
 app.use((err, req, res, next) => {
