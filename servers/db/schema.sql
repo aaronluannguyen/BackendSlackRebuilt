@@ -13,11 +13,11 @@ create table if not exists users (
 create table if not exists channels (
   id int primary key auto_increment not null,
   name varchar(255) not null,
-  description varchar(1024) not null,
-  private boolean not null,
-  createdAt timestamp not null,
+  description varchar(1024),
+  private boolean not null default false,
+  createdAt datetime not null,
   creatorUserID int null,
-  editedAt timestamp not null
+  editedAt datetime not null
 );
 
 create table if not exists channel_user (
@@ -28,8 +28,8 @@ create table if not exists channel_user (
 create table if not exists messages (
   id int primary key auto_increment not null,
   channelID int not null,
-  body varchar(2083) not null,
-  createdAt timestamp not null,
+  body varchar(4000) not null,
+  createdAt datetime not null,
   creatorUserID int not null,
-  editedAt timestamp not null
+  editedAt datetime not null
 );

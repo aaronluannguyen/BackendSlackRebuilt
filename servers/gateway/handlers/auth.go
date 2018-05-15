@@ -13,6 +13,10 @@ import (
 	"strings"
 )
 
+const headerCORS = "Access-Control-Allow-Origin"
+const headerContentType = "Content-Type"
+const contentTypeJSON = "application/json"
+
 //TODO: define HTTP handler functions as described in the
 //assignment description. Remember to use your handler context
 //struct as the receiver on these functions so that you have

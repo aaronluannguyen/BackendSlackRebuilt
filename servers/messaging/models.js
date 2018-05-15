@@ -18,19 +18,6 @@ export class channel {
         this.creator = creator;
         this.editedAt = editedAt;
     }
-
-    toJSON() {
-        return {
-            id: this.id,
-            name: this.name,
-            description: this.description,
-            private: this.private,
-            members: this.members,
-            createdAt: this.createdAt,
-            creator: this.creator,
-            editedAt: this.editedAt
-        };
-    }
 }
 
 export class message {
@@ -48,16 +35,5 @@ export class message {
         this.createdAt = createdAt;
         this.creator = creator;
         this.editedAt = editedAt;
-    }
-
-    toJSON() {
-        return {
-            id: this.id,
-            channelID: this.channelID,
-            body: this.body,
-            createdAt: this.createdAt,
-            creator: this.creator,
-            editedAt: this.editedAt
-        };
     }
 }
