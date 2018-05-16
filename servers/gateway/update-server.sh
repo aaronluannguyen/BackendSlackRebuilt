@@ -3,11 +3,10 @@ docker rm -f gatewayinfo344
 docker rm -f usersdb
 docker rm -f redissvr
 
-docker pull aaronluannguyen/gatewayinfo344
-docker run -it --rm
-
 docker network rm aaronchatnet
 docker network create aaronchatnet
+
+docker pull aaronluannguyen/gatewayinfo344
 
 export MYSQL_ROOT_PASSWORD=qejblkafuhqieuhgqeu1239
 export MYSQL_DATABASE=users
@@ -15,6 +14,8 @@ export MYSQL_ADDR=usersdb:3306
 export REDISADDR=redissvr:6379
 export SESSIONKEY=qlwfnfvdfvkbubiu9859b
 export DSN="root:$MYSQL_ROOT_PASSWORD@tcp($MYSQL_ADDR)/$MYSQL_DATABASE"
+export SUMMARYADDR=summarymicroservice:80
+export MESSAGESADDR=messagesmicroservice:80
 
 docker pull aaronluannguyen/usersdb
 docker run -d \
@@ -39,4 +40,6 @@ docker run -d --name gatewayinfo344 \
 -e DSN=$DSN \
 -e SESSIONKEY=$SESSIONKEY \
 -e REDISADDR=$REDISADDR \
+-e SUMMARYADDR=$SUMMARYADDR \
+-e MESSAGESADDR=$MESSAGESADDR \
 aaronluannguyen/gatewayinfo344

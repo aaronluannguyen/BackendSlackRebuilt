@@ -7,3 +7,5 @@ export SESSIONKEY=tempsessionkey
 export REDISADDR=localhost:6379
 export TLSCERT=./tls/fullchain.pem
 export TLSKEY=./tls/privkey.pem
+export SUMMARYADDR=summarymicroservice:80
+export MESSAGESADDR=messagesmicroservice:80

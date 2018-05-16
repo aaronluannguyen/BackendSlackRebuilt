@@ -36,11 +36,12 @@ func main() {
 	  that occur when trying to start the web server.
 	*/
 
-	summaryServiceAddrs := reqEnv("SUMMARY_SERVICE_ADDRS")
-
 	sessionKey := reqEnv("SESSIONKEY")
 	redisADDR := reqEnv("REDISADDR")
 	dsn := reqEnv("DSN")
+
+	summaryServiceAddrs := reqEnv("SUMMARYADDR")
+	messagesServiceAddrs := reqEnv("MESSAGESADDR")
 
 	addr := os.Getenv("ADDR")
 	if len(addr) == 0 {
@@ -83,8 +84,8 @@ func main() {
 	mux.HandleFunc("/v1/users/", hctx.SpecificUserHandler)
 	mux.HandleFunc("/v1/sessions", hctx.SessionsHandler)
 	mux.HandleFunc("/v1/sessions/", hctx.SpecificSessionHandler)
-	mux.Handle("/v1/channels", handlers.NewServiceProxy(addr, hctx))
-	mux.Handle("/v1/messages/", handlers.NewServiceProxy(addr, hctx))
+	mux.Handle("/v1/channels", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
+	mux.Handle("/v1/messages/", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
 
 	corsWrappedMux := handlers.WrappedCORSHandler(mux)
 
