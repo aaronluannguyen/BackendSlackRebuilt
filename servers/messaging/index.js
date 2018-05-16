@@ -46,6 +46,8 @@ let db = mysql.createPool({
 });
 
 //checkUserAuth checks the x-user header to make sure the user is signed in
+//if user is signed in, the user, as json, is returned
+//if not signed in, returns false
 function checkUserAuth(req) {
     let userJson = req.get("X-User");
     if (!userJson) {
@@ -56,6 +58,7 @@ function checkUserAuth(req) {
 }
 
 //verifyUserInChannel makes sure the user is a member of a private channel
+//and returns true or false accordingly
 function verifyUserInChannel(userID, channelID, next) {
     db.query(SQL_SELECT_SPECIFIC_CHANNEL, [channelID], (err, rows) => {
         if (err) {
@@ -74,6 +77,7 @@ function verifyUserInChannel(userID, channelID, next) {
 }
 
 //checkUserIsCreator checks if the user is the creator of a specified channel
+//and returns true or false accordingly
 function checkUserIsCreator(userID, next) {
     db.query(SQL_SELECT_CHANNEL_BY_ID, [userID], (err, rows) => {
         if (err) {
@@ -83,6 +87,8 @@ function checkUserIsCreator(userID, next) {
     });
 }
 
+//checkUserIsMessageCreator checks if the user is the creator of a specified message
+//and returns true or false accordingly
 function checkUserIsMessageCreator(userID, messageID, next) {
     db.query(SQL_SELECT_MESSAGE_BY_ID, [messageID], (err, rows) => {
         if (err) {
