@@ -14,9 +14,10 @@ const SQL_DELETE_CHANNEL_AND_MESSAGES = "delete from c, cu, m" +
 const SQL_SELECT_ALL_CHANNELS_FOR_USER = "select * from channels c" +
                                             " join channel_user cu on cu.channelID = c.id" +
                                             " join users u on u.id = cu.userID" +
-                                            " where (c.private=?) or (cu.userID=?)" +
+                                            " where (c.private=? or cu.userID=?)" +
                                             " order by c.id";
-const SQL_INSERT_NEW_CHANNEL = "insert into channels (name, description, private, createdAt, creatorUserID, editedAt) values (?,?,?,?,?,?)";
+const SQL_INSERT_NEW_CHANNEL = "insert into channels (name, description, private, createdAt, creatorUserID, editedAt) " +
+                                "values (?,?,?,?,?,?)";
 const SQL_INSERT_INTO_CHANNEL_USER = "insert into channel_user (userID, channelID) values(?,?)";
 const SQL_DELETE_USER_FROM_CHANNEL = "delete from channel_user where (channelID=? and userID=?)";
 const SQL_SELECT_SPECIFIC_CHANNEL = "select * from channels c" +
@@ -113,10 +114,11 @@ app.get("/v1/channels", (req, res, next) => {
 
     let channels = [];
 
-    db.query(SQL_SELECT_ALL_CHANNELS_FOR_USER, [0, user.id], (err, rows) => {
+    db.query(SQL_SELECT_ALL_CHANNELS_FOR_USER, [false, user.id], (err, rows) => {
         if (err) {
             return next(err);
         }
+        console.log(rows.length);
         let members = [];
         let creator = {id: rows[0].userID, userName: rows[0].username,
                         firstName: rows[0].firstName, lastName: rows[0].lastName, photoURL: rows[0].photoURL};
@@ -125,7 +127,6 @@ app.get("/v1/channels", (req, res, next) => {
                                     members, rows[0].createdAt, creator, rows[0].editedAt);
 
         rows.forEach((row) => {
-            console.log(row);
             if (row.channelID !== currChannelID) {
                 channels.push(channel);
                 members = [row.userID];

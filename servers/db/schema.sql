@@ -14,7 +14,7 @@ create table if not exists channels (
   id int primary key auto_increment not null,
   name varchar(255) not null,
   description varchar(1024),
-  private boolean not null,
+  private bool not null default false,
   createdAt datetime,
   creatorUserID int,
   editedAt datetime,
