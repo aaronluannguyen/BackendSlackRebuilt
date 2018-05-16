@@ -78,13 +78,13 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/v1/summary", handlers.NewServiceProxy(summaryServiceAddrs))
+	mux.Handle("/v1/summary", handlers.NewServiceProxy(summaryServiceAddrs, hctx))
 	mux.HandleFunc("/v1/users", hctx.UsersHandler)
 	mux.HandleFunc("/v1/users/", hctx.SpecificUserHandler)
 	mux.HandleFunc("/v1/sessions", hctx.SessionsHandler)
 	mux.HandleFunc("/v1/sessions/", hctx.SpecificSessionHandler)
-	mux.Handle("/v1/channels", handlers.NewServiceProxy(addr))
-	mux.Handle("/v1/messages/", handlers.NewServiceProxy(addr))
+	mux.Handle("/v1/channels", handlers.NewServiceProxy(addr, hctx))
+	mux.Handle("/v1/messages/", handlers.NewServiceProxy(addr, hctx))
 
 	corsWrappedMux := handlers.WrappedCORSHandler(mux)
 
