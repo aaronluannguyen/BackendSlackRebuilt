@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-
+export MYSQL_ROOT_PASSWORD=qejblkafuhqieuhgqeu1239
+export MYSQL_DATABASE=users
 # ensure MYSQL_ROOT_PASSWORD
 # and MYSQL_DATABASE are set
 if [[ -z $MYSQL_ROOT_PASSWORD ]]
