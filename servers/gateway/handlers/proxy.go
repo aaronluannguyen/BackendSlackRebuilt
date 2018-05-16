@@ -29,11 +29,11 @@ func NewServiceProxy(addrs string, ctx Context) *httputil.ReverseProxy {
 
 			r.Header.Del(headerUser)
 			currentState := &SessionState{}
-			user, err := sessions.GetState(r, ctx.SigningKey, ctx.SessionStore, currentState)
+			_, err := sessions.GetState(r, ctx.SigningKey, ctx.SessionStore, currentState)
 			if err != nil {
 				return
 			}
-			userJSON, _ := json.Marshal(user)
+			userJSON, _ := json.Marshal(currentState.User)
 			r.Header.Set(headerUser, string(userJSON))
 		},
 	}
