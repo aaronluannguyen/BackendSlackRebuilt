@@ -1,8 +1,6 @@
 "use strict";
 
 //SQL statements
-import {channel, message} from "./models";
-
 const SQL_SELECT_ALL_CHANNELS = "select * from channels c";
 const SQL_SELECT_CHANNEL_BY_ID = "select * from channels where id=?";
 const SQL_UPDATE_CHANNEL_NAME_DESC = "update channels set name=? set desc=? where id=?";
@@ -30,6 +28,7 @@ const SQL_TOP_100_MESSAGES = "select * from channels c" +
 
 const SQL_POST_MESSAGE = "insert into messages (channelID, body, createdAt, creatorUserID, editedAt) values (?,?,?,?,?)";
 const SQL_SELECT_MESSAGE_BY_ID = "select * from messages where id=?";
+const SQL_UPDATE_MESSAGE= "update messages set body=? set editedAt=? where id=?";
 const SQL_DELETE_MESSAGE_BY_ID = "delete from messages where id?";
 
 const express = require("express");
@@ -37,6 +36,9 @@ const mysql = require("mysql");
 
 
 const app = express();
+
+const addr = process.env.ADDR || ":80";
+const [host, port] = addr.split(":");
 
 let db = mysql.createPool({
     host: process.env.MYSQL_ADDR,
@@ -301,7 +303,18 @@ app.patch("/v1/messages/:messageID", (req, res, next) => {
     if (creator === false) {
         return res.status(403).send("Error: You are not the creator of this channel");
     }
-    // FINISH LATER BUT ALSO CHECK TO SEE IF WE HAVE TO UPDATE EDITED AT FOR THIS PATCH AND CHANNEL PATCH
+    db.query(SQL_UPDATE_MESSAGE, [req.body.body, Date.now(), req.params.messageID], (err, results) => {
+        if (err) {
+            return next(err);
+        }
+    });
+    db.query(SQL_SELECT_MESSAGE_BY_ID, [], (err, rows) => {
+        if (err) {
+            return next(err);
+        }
+        res.status(200);
+        res.json(rows[0])
+    });
 });
 
 app.delete("/v1/messages/:messageID", (req, res, next) => {
@@ -327,4 +340,8 @@ app.use((err, req, res, next) => {
         console.error(err.stack);
     }
     res.status(500).send("Something bad happened. Sorry.");
+});
+
+app.listen(port, host, () => {
+    console.log('server is listening at http://' + addr + '...');
 });

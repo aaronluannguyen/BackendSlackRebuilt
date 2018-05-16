@@ -12,9 +12,6 @@ import (
 	"time"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/challenges-aaronluannguyen/servers/gateway/indexes"
-	"net/http/httputil"
-	"strings"
-	"sync"
 )
 
 func reqEnv(name string) string {
@@ -23,26 +20,6 @@ func reqEnv(name string) string {
 		log.Fatalf("please set %s variable", name)
 	}
 	return val
-}
-
-//NewServiceProxy returns a new ReverseProxy
-//for a microservice given a comma-delimited
-//list of network addresses
-func NewServiceProxy(addrs string) *httputil.ReverseProxy {
-	splitAddrs := strings.Split(addrs, ",")
-	nextAddr := 0
-	mx := sync.Mutex{}
-
-	return &httputil.ReverseProxy{
-		Director: func(r *http.Request) {
-			r.URL.Scheme = "http"
-			mx.Lock()
-			r.URL.Host = splitAddrs[nextAddr]
-			nextAddr = (nextAddr + 1) % len(splitAddrs)
-			mx.Unlock()
-			// Check if you have to handle X-User headers here
-		},
-	}
 }
 
 //main is the main entry point for the server
@@ -101,11 +78,13 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/v1/summary", NewServiceProxy(summaryServiceAddrs))
+	mux.Handle("/v1/summary", handlers.NewServiceProxy(summaryServiceAddrs))
 	mux.HandleFunc("/v1/users", hctx.UsersHandler)
 	mux.HandleFunc("/v1/users/", hctx.SpecificUserHandler)
 	mux.HandleFunc("/v1/sessions", hctx.SessionsHandler)
 	mux.HandleFunc("/v1/sessions/", hctx.SpecificSessionHandler)
+	mux.Handle("/v1/channels", handlers.NewServiceProxy(addr))
+	mux.Handle("/v1/messages/", handlers.NewServiceProxy(addr))
 
 	corsWrappedMux := handlers.WrappedCORSHandler(mux)
 

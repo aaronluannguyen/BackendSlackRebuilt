@@ -1,4 +1,4 @@
-export class channel {
+class channel {
     constructor(
         id,
         name,
@@ -20,7 +20,7 @@ export class channel {
     }
 }
 
-export class message {
+class message {
     constructor (
         id,
         channelID,
@@ -36,4 +36,9 @@ export class message {
         this.creator = creator;
         this.editedAt = editedAt;
     }
+}
+
+module.exports = {
+    channel,
+    message
 }

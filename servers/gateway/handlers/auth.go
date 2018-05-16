@@ -108,7 +108,7 @@ func (ctx *Context) SpecificUserHandler(w http.ResponseWriter, r *http.Request) 
 			currentState := &SessionState{}
 			_, err := sessions.GetState(r, ctx.SigningKey, ctx.SessionStore, currentState)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("error getting session state: %v", err), http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("error getting session state: %v", err), http.StatusUnauthorized)
 				return
 			}
 			var userID int64
