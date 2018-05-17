@@ -11,33 +11,33 @@ create table if not exists users (
 );
 
 create table if not exists channels (
-  id int primary key auto_increment not null,
-  name varchar(255) not null,
-  description varchar(1024),
-  private bool not null default false,
-  createdAt datetime,
-  creatorUserID int,
-  editedAt datetime,
-  unique(name)
+  channelID int primary key auto_increment not null,
+  channelName varchar(255) not null,
+  channelDescription varchar(1024),
+  channelPrivate bool not null default false,
+  channelCreatedAt datetime,
+  channelCreatorUserID int,
+  channelEditedAt datetime,
+  unique(channelName)
 );
 
-insert into channels (name, description, private, createdAt, creatorUserID, editedAt)
+insert into channels (channelName, channelDescription, channelPrivate, channelCreatedAt, channelCreatorUserID, channelEditedAt)
 values ('general', 'general channel', false, null, null, null);
 
 create table if not exists channel_user (
-  id int primary key auto_increment not null,
-  userID int not null,
-  channelID int not null,
-  foreign key(userID) references users(id),
-  foreign key(channelID) references channels(id)
+  cuUserID int not null,
+  cuChannelID int not null,
+  foreign key(cuUserID) references users(id),
+  foreign key(cuChannelID) references channels(channelID),
+  primary key (cuUserID, cuChannelID)
 );
 
 create table if not exists messages (
-  id int primary key auto_increment not null,
-  channelID int not null,
-  foreign key(channelID) references channels(id),
-  body varchar(4000) not null,
-  createdAt datetime not null,
-  creatorUserID int not null,
-  editedAt datetime not null
+  mMessageID int primary key auto_increment not null,
+  mChannelID int not null,
+  foreign key(mChannelID) references channels(channelID),
+  mBody varchar(4000) not null,
+  mCreatedAt datetime not null,
+  mCreatorUserID int not null,
+  mEditedAt datetime not null
 );

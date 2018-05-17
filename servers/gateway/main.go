@@ -12,6 +12,7 @@ import (
 	"time"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/challenges-aaronluannguyen/servers/gateway/indexes"
+	"github.com/gorilla/mux"
 )
 
 func reqEnv(name string) string {
@@ -78,16 +79,18 @@ func main() {
 		log.Fatal("please set TLSKEY and TLSCERT")
 	}
 
-	mux := http.NewServeMux()
-	mux.Handle("/v1/summary", handlers.NewServiceProxy(summaryServiceAddrs, hctx))
-	mux.HandleFunc("/v1/users", hctx.UsersHandler)
-	mux.HandleFunc("/v1/users/", hctx.SpecificUserHandler)
-	mux.HandleFunc("/v1/sessions", hctx.SessionsHandler)
-	mux.HandleFunc("/v1/sessions/", hctx.SpecificSessionHandler)
-	mux.Handle("/v1/channels", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
-	mux.Handle("/v1/messages/", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
+	r := mux.NewRouter()
+	r.Handle("/v1/summary", handlers.NewServiceProxy(summaryServiceAddrs, hctx))
+	r.HandleFunc("/v1/users", hctx.UsersHandler)
+	r.HandleFunc("/v1/users/", hctx.SpecificUserHandler)
+	r.HandleFunc("/v1/sessions", hctx.SessionsHandler)
+	r.HandleFunc("/v1/sessions/", hctx.SpecificSessionHandler)
+	r.Handle("/v1/channels", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
+	r.Handle("/v1/channels/{channelID}", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
+	r.Handle("/v1/channels/{channelID}/members", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
+	r.Handle("/v1/messages/{messageID}", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
 
-	corsWrappedMux := handlers.WrappedCORSHandler(mux)
+	corsWrappedMux := handlers.WrappedCORSHandler(r)
 
 	log.Printf("Server is listening at https://%s", addr)
 	log.Fatal(http.ListenAndServeTLS(addr, tlsCertPath, tlsKeyPath, corsWrappedMux))
