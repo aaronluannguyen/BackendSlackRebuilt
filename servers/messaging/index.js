@@ -6,6 +6,8 @@ let Message = require("./models/message");
 let Constant = require("./models/sqlConstants");
 const duplicateError = "ER_DUP_ENTRY";
 const nonexistError = "ER_NO_REFERENCED";
+const contentType = "Content-Type";
+const headerTxt = "text/plain";
 
 const mysql = require("mysql");
 const express = require("express");
@@ -40,24 +42,24 @@ app.post("/v1/channels", async (req, res, next) => {
         let user = checkUserAuth(req, res);
         if (!user) { return }
         if (!req.body.name) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(400).send("Please provide name for channel");
         }
         let timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
         let result = await insertNewChannel(db, req.body.name, req.body.description,
                                             req.body.private, timestamp, user.id, req.body.members);
         if (result === duplicateError) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(400).send("Bad request: channel name already taken");
         }
         if (!result) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(500).send("server error: adding new channel");
         }
         let inserted = await newChannelInsertMembers(db, result.sqlCmd);
         if (!inserted) {
             let deleteStatus = await deleteChannelAndMessages(db, result.newChannelID);
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             if (!deleteStatus) {
                 return res.status(500).send("server error: deleting invalid channel add request");
             }
@@ -65,7 +67,7 @@ app.post("/v1/channels", async (req, res, next) => {
         }
         let channel = await queryChannelMembers(db, result.newChannelID);
         if (!channel) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(500).send("server error: retrieving channel members");
         }
         res.status(201);
@@ -82,7 +84,7 @@ app.get("/v1/channels/:channelID", async (req, res, next) => {
         if (!user) { return }
         let valid = await verifyUserInChannel(db, user.id, req.params.channelID);
         if (!valid) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(403).send("Forbidden request. Not a part of this channel");
         }
         let msgs = await queryTop100Msgs(db, req.params.channelID);
@@ -99,14 +101,14 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
         if (!user) { return }
         let valid = await verifyUserInChannel(db, user.id, req.params.channelID);
         if (!valid) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(403).send("Forbidden request. Not a part of this channel")
         }
         let dateNow = new Date().toISOString().slice(0, 19).replace('T', ' ');
         let newMessageID = await queryPostMessage(db, req.params.channelID, req.body.body, dateNow, user.id);
         let msg = await queryMessageByID(db, newMessageID);
         if (!msg) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(400).send("Message does not exist");
         }
         res.status(201);
@@ -124,15 +126,15 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
         if (!creatorStatus) { return }
         let update = await getOGChannelNameAndDesc(db, req.params.channelID);
         if (!update) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(400).send("No such channel");
         }
         if (checkIfNullEmpty(req.body.name) && checkIfNullEmpty(req.body.description)) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(400).send("Both Name and Description cannot be null or empty");
         }
         if (update.name === req.body.name && update.desc === req.body.description) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(403).send("No update necessary");
         }
         let newName = update.name;
@@ -146,12 +148,12 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
         let timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
         let updated = await updateChannelNameAndDesc(db, newName, newDesc, req.params.channelID, timestamp);
         if (!updated) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(400).send("Error: Channel does not exist");
         }
         let channel = await queryChannelMembers(db, req.params.channelID);
         if (!channel) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(500).send("Error retrieving channel members");
         }
         res.status(201);
@@ -168,7 +170,7 @@ app.delete("/v1/channels/:channelID", async (req, res, next) => {
         let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, next, res);
         if (!creatorStatus) { return }
         let deleted = await deleteChannelAndMessages(db, req.params.channelID);
-        res.set("Content-Type", "text/plain");
+        res.set(contentType, headerTxt);
         if (deleted === false) {
             res.status(400).send("Bad request: message does not exist");
         }
@@ -187,19 +189,19 @@ app.post("/v1/channels/:channelID/members", async (req, res, next) => {
         if (!creatorStatus) { return }
         let added = await queryAddUserToChannel(db, req.body.id, req.params.channelID);
         if (added === duplicateError) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(400).send("Bad request: member already added to channel");
         }
         if (added === nonexistError) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(400).send("Bad request: member does not exist");
         }
         if (!added) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(500).send("Server error adding user to channel");
         }
         res.status(201);
-        res.set("Content-Type", "text/plain");
+        res.set(contentType, headerTxt);
         res.send("Successfully added user to channel");
     } catch (err) {
         next(err);
@@ -214,10 +216,10 @@ app.delete("/v1/channels/:channelID/members", async (req, res, next) => {
         if (!creatorStatus) { return }
         let deleted = await queryDeleteUserFromChannel(db, req.params.channelID, req.body.id);
         if (!deleted) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             res.status(400).send("User does not exist in channel");
         }
-        res.set("Content-Type", "text/plain");
+        res.set(contentType, headerTxt);
         res.status(200).send("Successfully removed user from channel");
     } catch (err) {
         next(err);
@@ -234,12 +236,12 @@ app.patch("/v1/messages/:messageID", async (req, res, next) => {
         let updated = await queryUpdateMsg(db, req.body.body,
                                 new Date().toISOString().slice(0, 19).replace('T', ' '), req.params.messageID);
         if (!updated) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(500).send("Server error updating message");
         }
         let msg = await queryMessageByID(db, req.params.messageID);
         if (!msg) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(400).send("Message does not exist");
         }
         res.json(msg);
@@ -256,10 +258,10 @@ app.delete("/v1/messages/:messageID", async (req, res, next) => {
         if (!creator) { return }
         let deleted = await queryDeleteMessage(db, req.params.messageID);
         if (!deleted) {
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             return res.status(400).send("Message does not exist")
         }
-        res.set("Content-Type", "text/plain");
+        res.set(contentType, headerTxt);
         res.send("Successfully deleted message");
     } catch (err) {
         next(err);
@@ -284,7 +286,7 @@ app.listen(port, host, () => {
 function checkUserAuth(req, res) {
     let userJson = req.get("X-User");
     if (!userJson) {
-        res.set("Content-Type", "text/plain");
+        res.set(contentType, headerTxt);
         res.status(401).send("Error: Please sign in");
         return false;
     }
@@ -325,19 +327,19 @@ function checkUserIsCreator(db, userID, channelID, res) {
                 reject(err);
             }
             if (!rows || rows.length === 0) {
-                res.set("Content-Type", "text/plain");
+                res.set(contentType, headerTxt);
                 res.status(403).send("Error: You are not the creator of this channel");
                 return resolve(false);
             }
             if (!rows[0].channelPrivate) {
-                res.set("Content-Type", "text/plain");
+                res.set(contentType, headerTxt);
                 res.status(400).send("Bad request: This is a public channel");
                 return resolve(false)
             }
             if (rows[0].channelCreatorUserID === userID) {
                 return resolve(true);
             }
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             res.status(403).send("Error: You are not the creator of this channel");
             resolve(false);
         });
@@ -353,14 +355,14 @@ function checkUserIsMessageCreator(db, userID, messageID, res) {
                 reject(err);
             }
             if (rows.length === 0) {
-                res.set("Content-Type", "text/plain");
+                res.set(contentType, headerTxt);
                 res.status(403).send("Error: You are not the creator of this message");
                 return resolve(false);
             }
             if (rows[0].mCreatorUserID === userID) {
                 return resolve(true);
             }
-            res.set("Content-Type", "text/plain");
+            res.set(contentType, headerTxt);
             res.status(403).send("Error: You are not the creator of this message");
             return resolve(false);
         });
