@@ -4,6 +4,7 @@
 let Channel = require("./models/channel");
 let Message = require("./models/message");
 let Constant = require("./models/sqlConstants");
+const duplicateError = "ER_DUP_ENTRY";
 
 const mysql = require("mysql");
 const express = require("express");
@@ -26,9 +27,10 @@ app.get("/v1/channels", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
         if (!user) {
+            res.set("Content-Type", "text/plain");
             return res.status(401).send("Please sign in");
         }
-        let channels = await getChannelsForUser(db, Constant.SQL_SELECT_ALL_CHANNELS_FOR_USER, false, user.id);
+        let channels = await getChannelsForUser(db, false, user.id);
         res.json(channels);
     } catch (err) {
         next(err);
@@ -39,19 +41,38 @@ app.post("/v1/channels", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
         if (!user) {
+            res.set("Content-Type", "text/plain");
             return res.status(401).send("Please sign in");
         }
         if (!req.body.name) {
+            res.set("Content-Type", "text/plain");
             return res.status(400).send("Please provide name for channel");
         }
         let timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
-        let result = await insertNewChannel(db, Constant.SQL_INSERT_NEW_CHANNEL, req.body.name, req.body.description,
+        let result = await insertNewChannel(db, req.body.name, req.body.description,
                                             req.body.private, timestamp, user.id, req.body.members);
-        if (!result) {
-            return res.status(500).send("Server error: adding new channel");
+        if (result === duplicateError) {
+            res.set("Content-Type", "text/plain");
+            return res.status(400).send("Bad request: channel name already taken");
         }
-        await newChannelInsertMembers(db, result.sqlCmd);
-        let channel = await queryChannelMembers(db, Constant.SQL_SELECT_CHANNEL_MEMBERS, result.newChannelID);
+        if (!result) {
+            res.set("Content-Type", "text/plain");
+            return res.status(500).send("server error: adding new channel");
+        }
+        let inserted = await newChannelInsertMembers(db, result.sqlCmd);
+        if (!inserted) {
+            let deleteStatus = await deleteChannelAndMessages(db, result.newChannelID);
+            res.set("Content-Type", "text/plain");
+            if (!deleteStatus) {
+                return res.status(500).send("server error: deleting invalid channel add request");
+            }
+            return res.status(400).send("Bad Request: Tried inserting non-existent users");
+        }
+        let channel = await queryChannelMembers(db, result.newChannelID);
+        if (!channel) {
+            res.set("Content-Type", "text/plain");
+            return res.status(500).send("server error: retrieving channel members");
+        }
         res.status(201);
         res.json(channel);
     } catch (err) {
@@ -64,13 +85,15 @@ app.get("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
         if (!user) {
+            res.set("Content-Type", "text/plain");
             return res.status(401).send("Please sign in");
         }
         let valid = await verifyUserInChannel(db, user.id, req.params.channelID);
         if (!valid) {
+            res.set("Content-Type", "text/plain");
             return res.status(403).send("Forbidden request. Not a part of this channel");
         }
-        let msgs = await queryTop100Msgs(db, Constant.SQL_TOP_100_MESSAGES, req.params.channelID);
+        let msgs = await queryTop100Msgs(db, req.params.channelID);
         res.json(msgs);
     } catch (err) {
         next(err);
@@ -81,17 +104,20 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
         if (!user) {
+            res.set("Content-Type", "text/plain");
             return res.status(401).send("Please sign in");
         }
         let valid = await verifyUserInChannel(db, user.id, req.params.channelID);
         if (!valid) {
+            res.set("Content-Type", "text/plain");
             return res.status(403).send("Forbidden request. Not a part of this channel")
         }
         let dateNow = new Date().toISOString().slice(0, 19).replace('T', ' ');
-        let results = await queryPostMessage(db, Constant.SQL_POST_MESSAGE, req.params.channelID, req.body.body, dateNow, user.id);
+        let results = await queryPostMessage(db, req.params.channelID, req.body.body, dateNow, user.id);
         let newMessageID = results.insertId;
-        let msg = await queryMessageByID(db, Constant.SQL_SELECT_MESSAGE_BY_ID, newMessageID);
+        let msg = await queryMessageByID(db, newMessageID);
         if (!msg) {
+            res.set("Content-Type", "text/plain");
             return res.status(400).send("Message does not exist");
         }
         res.status(201);
@@ -105,17 +131,21 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
         if (!user) {
+            res.set("Content-Type", "text/plain");
             return res.status(401).send("Please sign in");
         }
         let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID);
         if (!creatorStatus) {
+            res.set("Content-Type", "text/plain");
             return res.status(403).send("Error: You are not the creator of this channel");
         }
-        let update = await getOGChannelNameAndDesc(Constant.SQL_SELECT_CHANNEL_BY_ID, req.params.channelID);
+        let update = await getOGChannelNameAndDesc(db, req.params.channelID);
         if (!update) {
+            res.set("Content-Type", "text/plain");
             return res.status(400).send("No such channel");
         }
         if (checkIfNullEmpty(req.body.name) && checkIfNullEmpty(req.body.description)) {
+            res.set("Content-Type", "text/plain");
             return res.status(400).send("Both Name and Description cannot be null or empty");
         }
         if (update.name === req.body.name && update.desc === req.body.description) {
@@ -130,9 +160,15 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
         if (!checkIfNullEmpty(req.body.description)) {
             newDesc = req.body.description;
         }
-        await updateChannelNameAndDesc(Constant.SQL_UPDATE_CHANNEL_NAME_DESC, newName,
-                                        newDesc, req.params.channelID);
-        let channel = await queryChannelMembers(db, Constant.SQL_SELECT_CHANNEL_MEMBERS, req.params.channelID);
+        let updated = await updateChannelNameAndDesc(db, newName, newDesc, req.params.channelID);
+        if (!updated) {
+
+        }
+        let channel = await queryChannelMembers(db, req.params.channelID);
+        if (!channel) {
+            res.set("Content-Type", "text/plain");
+            return res.status(500).send("Error retrieving channel members");
+        }
         res.status(201);
         res.json(channel);
     } catch (err) {
@@ -144,18 +180,20 @@ app.delete("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
         if (!user) {
+            res.set("Content-Type", "text/plain");
             return res.status(401).send("Please sign in");
         }
         let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, next);
         if (!creatorStatus) {
+            res.set("Content-Type", "text/plain");
             return res.status(403).send("Error: You are not the creator of this channel");
         }
-        let deleted = await deleteChannelAndMessages(db, Constant.SQL_DELETE_CHANNEL, Constant.SQL_DELETE_CU,
-                                                    Constant.SQL_DELETE_CHANNEL_MESSAGES, req.params.channelID);
-        if (deleted) {
-            res.set("Content-Type", "text/plain");
-            res.send("Successfully deleted channel and messages in that channel");
+        let deleted = await deleteChannelAndMessages(db, req.params.channelID);
+        res.set("Content-Type", "text/plain");
+        if (deleted === false) {
+            res.status(400).send("Bad request: message does not exist");
         }
+        res.send("Successfully deleted channel and messages in that channel");
     } catch (err) {
         next(err);
     }
@@ -166,14 +204,19 @@ app.post("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
         if (!user) {
+            res.set("Content-Type", "text/plain");
             return res.status(401).send("Please sign in");
         }
         let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, next);
         if (!creatorStatus) {
+            res.set("Content-Type", "text/plain");
             return res.status(403).send("Error: You are not the creator of this channel");
         }
-        await queryAddUserToChannel(db, Constant.SQL_INSERT_INTO_CHANNEL_USER,
-                                    req.body.id, req.params.channelID);
+        let added = await queryAddUserToChannel(db, req.body.id, req.params.channelID);
+        if (!added) {
+            res.set("Content-Type", "text/plain");
+            return res.status(500).send("Server error adding user to channel");
+        }
         res.status(201);
         res.set("Content-Type", "text/plain");
         res.send("Successfully added user to channel");
@@ -186,17 +229,21 @@ app.delete("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
         if (!user) {
+            res.set("Content-Type", "text/plain");
             return res.status(401).send("Please sign in");
         }
         let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID);
         if (!creatorStatus) {
+            res.set("Content-Type", "text/plain");
             return res.status(403).send("Error: You are not the creator of this channel");
         }
-        await queryDeleteUserFromChannel(db, Constant.SQL_DELETE_USER_FROM_CHANNEL,
-                                        req.params.channelID, req.body.id);
-        res.status(200);
+        let deleted = await queryDeleteUserFromChannel(db, req.params.channelID, req.body.id);
+        if (!deleted) {
+            res.set("Content-Type", "text/plain");
+            res.status(400).send("User does not exist in channel");
+        }
         res.set("Content-Type", "text/plain");
-        res.send("Successfully removed user from channel");
+        res.status(200).send("Successfully removed user from channel");
     } catch (err) {
         next(err);
     }
@@ -207,16 +254,23 @@ app.patch("/v1/messages/:messageID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
         if (!user) {
+            res.set("Content-Type", "text/plain");
             return res.status(401).send("Please sign in");
         }
         let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID);
         if (!creator) {
+            res.set("Content-Type", "text/plain");
             return res.status(403).send("Error: You are not the creator of this message");
         }
-        await queryUpdateMsg(db, Constant.SQL_UPDATE_MESSAGE, req.body.body,
+        let updated = await queryUpdateMsg(db, req.body.body,
                                 new Date().toISOString().slice(0, 19).replace('T', ' '), req.params.messageID);
-        let msg = await queryMessageByID(db, Constant.SQL_SELECT_MESSAGE_BY_ID, req.params.messageID);
+        if (!updated) {
+            res.set("Content-Type", "text/plain");
+            return res.status(500).send("Server error updating message");
+        }
+        let msg = await queryMessageByID(db, req.params.messageID);
         if (!msg) {
+            res.set("Content-Type", "text/plain");
             return res.status(400).send("Message does not exist");
         }
         res.json(msg);
@@ -229,14 +283,17 @@ app.delete("/v1/messages/:messageID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
         if (!user) {
+            res.set("Content-Type", "text/plain");
             return res.status(401).send("Please sign in");
         }
         let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID);
         if (!creator) {
+            res.set("Content-Type", "text/plain");
             return res.status(403).send("Error: You are not the creator of this message");
         }
-        let deleted = await queryDeleteMessage(db, Constant.SQL_DELETE_MESSAGE_BY_ID, req.params.messageID);
+        let deleted = await queryDeleteMessage(db, req.params.messageID);
         if (!deleted) {
+            res.set("Content-Type", "text/plain");
             return res.status(400).send("Message does not exist")
         }
         res.set("Content-Type", "text/plain");
@@ -250,6 +307,7 @@ app.use((err, req, res, next) => {
     if (err.stack) {
         console.error(err.stack);
     }
+    res.set("Content-Type", "text/plain");
     res.status(500).send("Server Error...");
 });
 
@@ -326,10 +384,10 @@ function checkUserIsMessageCreator(db, userID, messageID) {
 }
 
 // getChannelsForUser returns all channels available to user
-function getChannelsForUser(db, sql, bool, userID) {
+function getChannelsForUser(db, bool, userID) {
     return new Promise((resolve, reject) => {
         let channels = [];
-        db.query(sql, [bool, userID], (err, rows) => {
+        db.query(Constant.SQL_SELECT_ALL_CHANNELS_FOR_USER, [bool, userID], (err, rows) => {
             if (err) {
                 reject(err);
             }
@@ -377,10 +435,13 @@ function getChannelsForUser(db, sql, bool, userID) {
 }
 
 //insertNewChannel inserts a new channel and returns a promise containing the sql command for adding members
-function insertNewChannel(db, sql, name, descr, isPrivate, date, userID, members) {
+function insertNewChannel(db, name, descr, isPrivate, date, userID, members) {
     return new Promise((resolve, reject) => {
-        db.query(sql, [name, descr, isPrivate, date, userID, date], (err, results) => {
+        db.query(Constant.SQL_INSERT_NEW_CHANNEL, [name, descr, isPrivate, date, userID, date], (err, results) => {
             if (err) {
+                if (err.message.startsWith(duplicateError)) {
+                    return resolve(duplicateError);
+                }
                 reject(err);
             }
             if (!results) {
@@ -410,19 +471,26 @@ function newChannelInsertMembers(db, sql) {
     return new Promise((resolve, reject) => {
         db.query(sql, (err, rows) => {
             if (err) {
+                return resolve(false);
                 reject(err);
+            }
+            if (!rows) {
+                return resolve(false)
             }
             return resolve(true);
         });
     });
 }
 
-//queryDeletedUserFromChannel returns a promise whether the user was successfully deleted from a channel
-function queryDeleteUserFromChannel(db, sql, channelID, userID) {
+//queryDeleteUserFromChannel returns a promise whether the user was successfully deleted from a channel
+function queryDeleteUserFromChannel(db, channelID, userID) {
     return new Promise((resolve, reject) => {
-        db.query(sql, [channelID, userID], (err, rows) => {
+        db.query(Constant.SQL_DELETE_USER_FROM_CHANNEL, [channelID, userID], (err, rows) => {
             if (err) {
                 reject(err);
+            }
+            if (rows.length === 0) {
+                return resolve(false);
             }
             resolve(true);
         });
@@ -430,11 +498,14 @@ function queryDeleteUserFromChannel(db, sql, channelID, userID) {
 }
 
 //queryAddUserToChannel returns a promise that indicates if a user was successfully added to a channel
-function queryAddUserToChannel(db, sql, userID, channelID) {
+function queryAddUserToChannel(db, userID, channelID) {
     return new Promise((resolve, reject) => {
-        db.query(sql, [userID, channelID], (err, rows) => {
+        db.query(Constant.SQL_INSERT_INTO_CHANNEL_USER, [userID, channelID], (err, rows) => {
             if (err) {
                 reject(err);
+            }
+            if (!rows) {
+                return resolve(false);
             }
             resolve(true);
         });
@@ -442,13 +513,13 @@ function queryAddUserToChannel(db, sql, userID, channelID) {
 }
 
 //getOGChannelNameAndDesc returns a promise containing the current Channel Name and Description
-function getOGChannelNameAndDesc(sql, channelID) {
+function getOGChannelNameAndDesc(db, channelID) {
     return new Promise((resolve, reject) => {
-        db.query(sql, [channelID], (err, rows) => {
+        db.query(Constant.SQL_SELECT_CHANNEL_BY_ID, [channelID], (err, rows) => {
             if (err) {
                 reject(err);
             }
-            if (rows.length === 0) {
+            if (!rows || rows.length === 0) {
                 return resolve(false);
             }
             resolve({name: rows[0].channelName, desc: rows[0].channelDescription});
@@ -462,11 +533,14 @@ function checkIfNullEmpty(obj) {
 }
 
 //updateChannelNameAndDesc returns a promise if successfully updated channel
-function updateChannelNameAndDesc(sql, name, desc, channelID) {
+function updateChannelNameAndDesc(db, name, desc, channelID) {
     return new Promise((resolve, reject) => {
-        db.query(sql, [name, desc, channelID], (err, rows) => {
+        db.query(Constant.SQL_UPDATE_CHANNEL_NAME_DESC, [name, desc, channelID], (err, rows) => {
             if (err) {
                 reject(err);
+            }
+            if (!rows || rows === "") {
+                return resolve(false);
             }
             resolve(true);
         });
@@ -474,11 +548,14 @@ function updateChannelNameAndDesc(sql, name, desc, channelID) {
 }
 
 //queryChannelMembers returns a promise containing rows for finding members in a channel
-function queryChannelMembers(db, sql, channelID) {
+function queryChannelMembers(db, channelID) {
     return new Promise((resolve, reject) => {
-        db.query(sql, [channelID], (err, rows) => {
+        db.query(Constant.SQL_SELECT_CHANNEL_MEMBERS, [channelID], (err, rows) => {
             if (err) {
                 reject(err);
+            }
+            if (!rows || rows.length === 0) {
+                return resolve(false)
             }
             let members = [];
             let creator = {};
@@ -491,7 +568,6 @@ function queryChannelMembers(db, sql, channelID) {
                         lastName: row.lastName, photoURL: row.photoURL};
                 }
             });
-            console.log(rows[0]);
             if (!rows[0].channelPrivate) {
                 members = [];
             }
@@ -503,9 +579,9 @@ function queryChannelMembers(db, sql, channelID) {
 }
 
 //queryPostMessage posts a message and returns a promise containing the message ID
-function queryPostMessage(db, sql, channelID, body, date, userID) {
+function queryPostMessage(db, channelID, body, date, userID) {
     return new Promise((resolve, reject) => {
-        db.query(sql, [channelID, body, date, userID, date], (err, results) => {
+        db.query(Constant.SQL_POST_MESSAGE, [channelID, body, date, userID, date], (err, results) => {
             if (err) {
                 reject(err);
             }
@@ -515,16 +591,15 @@ function queryPostMessage(db, sql, channelID, body, date, userID) {
 }
 
 //queryMessageByID returns a promise containing a message model
-function queryMessageByID(db, sql, msgID) {
+function queryMessageByID(db, msgID) {
     return new Promise((resolve, reject) => {
-        db.query(sql,[msgID], (err, rows) => {
+        db.query(Constant.SQL_SELECT_MESSAGE_BY_ID,[msgID], (err, rows) => {
             if (err) {
                 reject(err);
             }
-            if (rows.length === 0) {
+            if (!rows || rows.length === 0) {
                 return resolve(false);
             }
-
             let creator = {id: rows[0].id, userName: rows[0].username, firstName: rows[0].firstName,
                 lastName: rows[0].lastName, photoURL: rows[0].photoURL};
             let message = new Message(rows[0].mMessageID, rows[0].mChannelID, rows[0].mBody,
@@ -535,10 +610,10 @@ function queryMessageByID(db, sql, msgID) {
 }
 
 //queryTop100Msgs returns a promise containing the most recent 100 messages in a channel
-function queryTop100Msgs(db, sql, channelID) {
+function queryTop100Msgs(db, channelID) {
     return new Promise((resolve, reject) => {
         let messages = [];
-        db.query(sql, [channelID], (err, rows) => {
+        db.query(Constant.SQL_TOP_100_MESSAGES, [channelID], (err, rows) => {
             if (err) {
                 reject(err);
             }
@@ -558,11 +633,14 @@ function queryTop100Msgs(db, sql, channelID) {
 }
 
 //queryUpdateMsg queries to update a message's body and returns a promise confirming that msg was updated
-function queryUpdateMsg(db, sql, body, date, messageID) {
+function queryUpdateMsg(db, body, date, messageID) {
     return new Promise((resolve, reject) => {
-        db.query(sql, [body, date, messageID], (err, results) => {
+        db.query(Constant.SQL_UPDATE_MESSAGE, [body, date, messageID], (err, results) => {
             if (err) {
                 reject(err);
+            }
+            if (!results) {
+                return resolve(false);
             }
             resolve(true);
         });
@@ -570,13 +648,13 @@ function queryUpdateMsg(db, sql, body, date, messageID) {
 }
 
 //queryDeleteMessage queries to delete a message and returns a promise indicating status of deletion
-function queryDeleteMessage(db, sql, messageID) {
+function queryDeleteMessage(db, messageID) {
     return new Promise((resolve, reject) => {
-        db.query(sql, [messageID], (err, rows) => {
+        db.query(Constant.SQL_DELETE_MESSAGE_BY_ID, [messageID], (err, results) => {
             if (err) {
                 reject(err);
             }
-            if (rows.length === 0) {
+            if (!results) {
                 return resolve(false);
             }
             resolve(true);
@@ -586,23 +664,32 @@ function queryDeleteMessage(db, sql, messageID) {
 
 //deleteChannelAndMessages queries to delete all data related to given channelID such as
 //from the channels, channel_user, and messages tables from the data base
-function deleteChannelAndMessages(db, sqlChannel, sqlCU, sqlMessages, channelID) {
+function deleteChannelAndMessages(db, channelID) {
     return new Promise((resolve, reject) => {
-        db.query(sqlChannel, [channelID], (err, results) => {
-            if (err) {
-                reject(err);
-            }
-        });
-        db.query(sqlCU, [channelID], (err, results) => {
-            if (err) {
-                reject(err);
-            }
-        });
-        db.query(sqlMessages, [channelID], (err, results) => {
-            if (err) {
-                reject(err);
-            }
-        });
         resolve(true);
+        db.query(Constant.SQL_DELETE_CHANNEL_MESSAGES, [channelID], (err, results) => {
+            if (err) {
+                reject(err);
+            }
+            if (!results) {
+                return resolve(false);
+            }
+            db.query(Constant.SQL_DELETE_CU, [channelID], (err, results) => {
+                if (err) {
+                    reject(err);
+                }
+                if (!results) {
+                    return resolve(false);
+                }
+                db.query(Constant.SQL_DELETE_CHANNEL, [channelID], (err, results) => {
+                    if (err) {
+                        reject(err);
+                    }
+                    if (!results) {
+                        return resolve(false);
+                    }
+                });
+            });
+        });
     });
 }

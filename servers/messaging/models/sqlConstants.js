@@ -30,9 +30,6 @@ module.exports = {
     SQL_SELECT_CHANNEL_BY_ID :                   "select * from channels where " + channel_id + "=?",
     SQL_UPDATE_CHANNEL_NAME_DESC :               "update channels set " + channel_name + "=?, " + channel_desc + "=? where " + channel_id + "=?",
 
-    SQL_ALTER_TABLE_BEFORE_CHANNEL_DELETE :      "alter table channels add constraint channel_user_ibfk_2" +
-                                                 " foreign key (" + channel_id +") references channel_user (" + cu_channelID + ");",
-
     SQL_DELETE_CHANNEL :                         "delete channels" +
                                                  " from channels" +
                                                  " where " + channel_id + "=?",

@@ -16,14 +16,11 @@ create table if not exists channels (
   channelDescription varchar(1024),
   channelPrivate bool not null default false,
   channelCreatedAt datetime,
-  channelCreatorUserID int,
+  channelCreatorUserID int not null,
   foreign key(channelCreatorUserID) references users(id),
   channelEditedAt datetime,
   unique(channelName)
 );
-
-insert into channels (channelName, channelDescription, channelPrivate, channelCreatedAt, channelCreatorUserID, channelEditedAt)
-values ('general', 'general channel', false, null, null, null);
 
 create table if not exists channel_user (
   cuUserID int not null,
@@ -43,3 +40,12 @@ create table if not exists messages (
   foreign key(mCreatorUserID) references users(id),
   mEditedAt datetime not null
 );
+
+insert into users (email, passHash, username, firstName, lastName, photoURL)
+values ("admin@system.com", "\0", "system", "", "", "");
+
+insert into channels (channelName, channelDescription, channelPrivate, channelCreatedAt, channelCreatorUserID, channelEditedAt)
+values ('general', 'general channel', false, null, 1, null);
+
+insert into channel_user (cuUserID, cuChannelID)
+values (1, 1);
