@@ -119,11 +119,8 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req, res);
         if (!user) { return }
-        let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID);
-        if (!creatorStatus) {
-            res.set("Content-Type", "text/plain");
-            return res.status(403).send("Error: You are not the creator of this channel");
-        }
+        let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, res);
+        if (!creatorStatus) { return }
         let update = await getOGChannelNameAndDesc(db, req.params.channelID);
         if (!update) {
             res.set("Content-Type", "text/plain");
@@ -165,11 +162,8 @@ app.delete("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req, res);
         if (!user) { return }
-        let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, next);
-        if (!creatorStatus) {
-            res.set("Content-Type", "text/plain");
-            return res.status(403).send("Error: You are not the creator of this channel");
-        }
+        let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, next, res);
+        if (!creatorStatus) { return }
         let deleted = await deleteChannelAndMessages(db, req.params.channelID);
         res.set("Content-Type", "text/plain");
         if (deleted === false) {
@@ -186,11 +180,8 @@ app.post("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
         let user = checkUserAuth(req, res);
         if (!user) { return }
-        let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, next);
-        if (!creatorStatus) {
-            res.set("Content-Type", "text/plain");
-            return res.status(403).send("Error: You are not the creator of this channel");
-        }
+        let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, next, res);
+        if (!creatorStatus) { return }
         let added = await queryAddUserToChannel(db, req.body.id, req.params.channelID);
         if (!added) {
             res.set("Content-Type", "text/plain");
@@ -208,11 +199,8 @@ app.delete("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
         let user = checkUserAuth(req, res);
         if (!user) { return }
-        let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID);
-        if (!creatorStatus) {
-            res.set("Content-Type", "text/plain");
-            return res.status(403).send("Error: You are not the creator of this channel");
-        }
+        let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, res);
+        if (!creatorStatus) { return }
         let deleted = await queryDeleteUserFromChannel(db, req.params.channelID, req.body.id);
         if (!deleted) {
             res.set("Content-Type", "text/plain");
@@ -230,11 +218,8 @@ app.patch("/v1/messages/:messageID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req, res);
         if (!user) { return }
-        let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID);
-        if (!creator) {
-            res.set("Content-Type", "text/plain");
-            return res.status(403).send("Error: You are not the creator of this message");
-        }
+        let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID, res);
+        if (!creator) { return }
         let updated = await queryUpdateMsg(db, req.body.body,
                                 new Date().toISOString().slice(0, 19).replace('T', ' '), req.params.messageID);
         if (!updated) {
@@ -256,11 +241,8 @@ app.delete("/v1/messages/:messageID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req, res);
         if (!user) { return }
-        let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID);
-        if (!creator) {
-            res.set("Content-Type", "text/plain");
-            return res.status(403).send("Error: You are not the creator of this message");
-        }
+        let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID, res);
+        if (!creator) { return }
         let deleted = await queryDeleteMessage(db, req.params.messageID);
         if (!deleted) {
             res.set("Content-Type", "text/plain");
@@ -325,32 +307,46 @@ function verifyUserInChannel(db, userID, channelID) {
 
 //checkUserIsCreator checks if the user is the creator of a specified channel
 //and returns true or false accordingly
-function checkUserIsCreator(userID, channelID) {
+function checkUserIsCreator(userID, channelID, res) {
     return new Promise((resolve, reject) => {
         db.query(Constant.SQL_SELECT_CHANNEL_BY_ID, [channelID], (err, rows) => {
             if (err) {
                 reject(err);
             }
             if (rows.length === 0) {
+                res.set("Content-Type", "text/plain");
+                res.status(403).send("Error: You are not the creator of this channel");
                 return resolve(false);
             }
-            resolve(rows[0].channelCreatorUserID === userID);
+            if (rows[0].channelCreatorUserID === userID) {
+                return resolve(true);
+            }
+            res.set("Content-Type", "text/plain");
+            res.status(403).send("Error: You are not the creator of this channel");
+            resolve(false);
         });
     });
 }
 
 //checkUserIsMessageCreator checks if the user is the creator of a specified message
 //and returns true or false accordingly
-function checkUserIsMessageCreator(db, userID, messageID) {
+function checkUserIsMessageCreator(db, userID, messageID, res) {
     return new Promise((resolve, reject) => {
         db.query(Constant.SQL_SELECT_MESSAGE_BY_ID, [messageID], (err, rows) => {
             if (err) {
                 reject(err);
             }
             if (rows.length === 0) {
-                return resolve(false)
+                res.set("Content-Type", "text/plain");
+                res.status(403).send("Error: You are not the creator of this message");
+                return resolve(false);
             }
-            resolve(rows[0].mCreatorUserID === userID);
+            if (rows[0].mCreatorUserID === userID) {
+                return resolve(true);
+            }
+            res.set("Content-Type", "text/plain");
+            res.status(403).send("Error: You are not the creator of this message");
+            return resolve(false);
         });
     });
 }
