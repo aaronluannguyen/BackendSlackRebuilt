@@ -22,112 +22,41 @@ let db = mysql.createPool({
 app.use(express.json());
 
 // Handle Endpoint: /v1/channels
-app.get("/v1/channels", (req, res, next) => {
-    let user = checkUserAuth(req);
-    if (user === false) {
-        return res.status(401).send("Please sign in");
-    }
-
-    let channels = [];
-    db.query(Constant.SQL_SELECT_ALL_CHANNELS_FOR_USER, [false, user.id], (err, rows) => {
-        if (err) {
-            return next(err);
+app.get("/v1/channels", async (req, res, next) => {
+    try {
+        let user = checkUserAuth(req);
+        if (user === false) {
+            return res.status(401).send("Please sign in");
         }
-        if (rows.length === 0) {
-            return res.json(channels);
-        }
-        let members = [];
-        let currChannelID = rows[0].channelID;
-        let channel = new Channel(rows[0].channelID, rows[0].channelName, rows[0].channelDescription,
-                                    rows[0].channelPrivate, members, rows[0].channelCreatedAt,
-                                    {}, rows[0].channelEditedAt);
-
-        rows.forEach((row) => {
-            if (row.channelID !== currChannelID) {
-                if (channel.isPrivate === 0) {
-                    channel.members = [];
-                }
-                channels.push(channel);
-                members = [{id: row.id, userName: row.username, firstName: row.firstName,
-                            lastName: row.lastName, photoURL: row.photoURL}];
-                channel = new Channel(row.channelID, row.channelName, row.channelDescription,
-                    row.channelPrivate, members, row.channelCreatedAt,
-                    {}, row.channelEditedAt);
-                if (row.channelCreatorUserID === row.id) {
-                    channel.creator = {id: row.channelCreatorUserID, userName: row.username,
-                        firstName: row.firstName, lastName: row.lastName, photoURL: row.photoURL};
-                }
-                currChannelID = row.channelID;
-            } else {
-                let member = {id: row.id, userName: row.username, firstName: row.firstName,
-                    lastName: row.lastName, photoURL: row.photoURL};
-                members.push(member);
-                if (row.channelCreatorUserID === row.id) {
-                    channel.creator = {id: row.channelCreatorUserID, userName: row.username,
-                        firstName: row.firstName, lastName: row.lastName, photoURL: row.photoURL};
-                }
-            }
-        });
-        if (channel.isPrivate === 0) {
-            channel.members = [];
-        }
-        channels.push(channel);
+        let channels = await getChannelsForUser(db, Constant.SQL_SELECT_ALL_CHANNELS_FOR_USER, false, user.id);
         res.json(channels);
-    });
+    } catch (err) {
+        next(err);
+    }
 });
 
-app.post("/v1/channels", (req, res, next) => {
-    let user = checkUserAuth(req);
-    if (user === false) {
-        return res.status(401).send("Please sign in");
-    }
-
-    if (!req.body.name) {
-        return res.status(400).send("Please provide name for channel");
-    }
-
-    let currTimestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    db.query(Constant.SQL_INSERT_NEW_CHANNEL, [req.body.name, req.body.description, req.body.private,
-                currTimestamp, user.id, currTimestamp], (err, results) => {
-        if (err) {
-            return next(err);
+app.post("/v1/channels", async (req, res, next) => {
+    try {
+        let user = checkUserAuth(req);
+        if (user === false) {
+            return res.status(401).send("Please sign in");
         }
-        let newChannelID = results.insertId;
-        let allMembersInsert = "values (" + user.id + ", " + newChannelID + "), ";
-        let membersToAdd = [];
-        if (req.body.members) {
-            membersToAdd = req.body.members;
+        if (!req.body.name) {
+            return res.status(400).send("Please provide name for channel");
         }
-        membersToAdd.forEach((member) => {
-            let memberObj = "(" + member.id + ", " + newChannelID + "), ";
-            allMembersInsert += memberObj;
-        });
-        let trimmedAllMembersInsert = allMembersInsert.slice(0, allMembersInsert.length - 2);
-        trimmedAllMembersInsert += ";";
-        let membersInsertSQL = Constant.SQL_INSERT_INTO_CHANNEL_USER_BASE + trimmedAllMembersInsert;
-        db.query(membersInsertSQL, (err, results) => {
-            if (err) {
-                return next(err);
-            }
-            db.query(Constant.SQL_SELECT_CHANNEL_MEMBERS, [newChannelID], (err, rows) => {
-                if (err) {
-                    return next(err);
-                }
-                let members = [];
-                if (rows[0].channelPrivate === 1) {
-                    rows.forEach((row) => {
-                        let member = {id: row.id, userName: row.username, firstName: row.firstName,
-                            lastName: row.lastName, photoURL: row.photoURL};
-                        members.push(member);
-                    });
-                }
-                let channel = new Channel(rows[0].channelID, rows[0].channelName, rows[0].channelDescription,
-                    rows[0].channelPrivate, members, rows[0].channelCreatedAt, user, rows[0].channelEditedAt);
-                res.status(201);
-                res.json(channel);
-            });
-        });
-    });
+        let timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        let result = await insertNewChannel(db, Constant.SQL_INSERT_NEW_CHANNEL, req.body.name, req.body.description,
+                                            req.body.private, timestamp, user.id, req.body.members);
+        if (!result) {
+            return res.status(500).send("Server error: adding new channel");
+        }
+        await newChannelInsertMembers(db, result.sqlCmd);
+        let channel = await queryChannelMembers(db, Constant.SQL_SELECT_CHANNEL_MEMBERS, result.newChannelID);
+        res.status(201);
+        res.json(channel);
+    } catch (err) {
+        next(err);
+    }
 });
 
 // Handle Endpoint: /v1/channels/{channelID}
@@ -186,33 +115,24 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
         if (!update) {
             return res.status(400).send("No such channel");
         }
+        if (checkIfNullEmpty(req.body.name) && checkIfNullEmpty(req.body.description)) {
+            return res.status(400).send("Both Name and Description cannot be null or empty");
+        }
+        if (update.name === req.body.name && update.desc === req.body.description) {
+            res.set("Content-Type", "text/plain");
+            return res.status(403).send("No update necessary");
+        }
         let newName = update.name;
-        if (!checkIfChannelUpdateNullEmpty(req.body.name)) {
+        if (!checkIfNullEmpty(req.body.name)) {
             newName = req.body.name;
         }
         let newDesc = update.desc;
-        if (!checkIfChannelUpdateNullEmpty(req.body.description)) {
+        if (!checkIfNullEmpty(req.body.description)) {
             newDesc = req.body.description;
         }
         await updateChannelNameAndDesc(Constant.SQL_UPDATE_CHANNEL_NAME_DESC, newName,
-            newDesc, req.params.channelID);
-        let rows = await queryChannelMembers(Constant.SQL_SELECT_CHANNEL_MEMBERS, req.params.channelID);
-        let members = [];
-        let creator = {};
-        rows.forEach((row) => {
-            let member = {id: row.id, userName: row.username, firstName: row.firstName,
-                lastName: row.lastName, photoURL: row.photoURL};
-            members.push(member);
-            if (row.channelCreatorUserID === row.id) {
-                creator = {id: row.id, userName: row.username, firstName: row.firstName,
-                    lastName: row.lastName, photoURL: row.photoURL};
-            }
-        });
-        if (rows[0].channelPrivate === 1) {
-            members = [];
-        }
-        let channel = new Channel(rows[0].channelID, rows[0].channelName, rows[0].channelDescription,
-            rows[0].channelPrivate, members, rows[0].channelCreatedAt, creator, rows[0].channelEditedAt);
+                                        newDesc, req.params.channelID);
+        let channel = await queryChannelMembers(db, Constant.SQL_SELECT_CHANNEL_MEMBERS, req.params.channelID);
         res.status(201);
         res.json(channel);
     } catch (err) {
@@ -412,6 +332,98 @@ function checkUserIsMessageCreator(db, userID, messageID) {
     });
 }
 
+// getChannelsForUser returns all channels available to user
+function getChannelsForUser(db, sql, bool, userID) {
+    return new Promise((resolve, reject) => {
+        let channels = [];
+        db.query(sql, [bool, userID], (err, rows) => {
+            if (err) {
+                reject(err);
+            }
+            if (rows.length === 0) {
+                return resolve(channels);
+            }
+            let members = [];
+            let currChannelID = rows[0].channelID;
+            let channel = new Channel(rows[0].channelID, rows[0].channelName, rows[0].channelDescription,
+                rows[0].channelPrivate, members, rows[0].channelCreatedAt,
+                {}, rows[0].channelEditedAt);
+            rows.forEach((row) => {
+                if (row.channelID !== currChannelID) {
+                    if (channel.isPrivate === 0) {
+                        channel.members = [];
+                    }
+                    channels.push(channel);
+                    members = [{id: row.id, userName: row.username, firstName: row.firstName,
+                        lastName: row.lastName, photoURL: row.photoURL}];
+                    channel = new Channel(row.channelID, row.channelName, row.channelDescription,
+                        row.channelPrivate, members, row.channelCreatedAt,
+                        {}, row.channelEditedAt);
+                    if (row.channelCreatorUserID === row.id) {
+                        channel.creator = {id: row.channelCreatorUserID, userName: row.username,
+                            firstName: row.firstName, lastName: row.lastName, photoURL: row.photoURL};
+                    }
+                    currChannelID = row.channelID;
+                } else {
+                    let member = {id: row.id, userName: row.username, firstName: row.firstName,
+                        lastName: row.lastName, photoURL: row.photoURL};
+                    members.push(member);
+                    if (row.channelCreatorUserID === row.id) {
+                        channel.creator = {id: row.channelCreatorUserID, userName: row.username,
+                            firstName: row.firstName, lastName: row.lastName, photoURL: row.photoURL};
+                    }
+                }
+            });
+            if (channel.isPrivate === 0) {
+                channel.members = [];
+            }
+            channels.push(channel);
+            return resolve(channels);
+        })
+    });
+}
+
+//insertNewChannel inserts a new channel and returns a promise containing the sql command for adding members
+function insertNewChannel(db, sql, name, descr, isPrivate, date, userID, members) {
+    return new Promise((resolve, reject) => {
+        db.query(sql, [name, descr, isPrivate, date, userID, date], (err, results) => {
+            if (err) {
+                reject(err);
+            }
+            if (!results) {
+                return resolve(false);
+            }
+            let newChannelID = results.insertId;
+            let allMembersInsert = "values (" + userID + ", " + newChannelID + "), ";
+            let membersToAdd = [];
+            if (members) {
+                membersToAdd = members;
+            }
+            membersToAdd.forEach((member) => {
+                let memberObj = "(" + member.id + ", " + newChannelID + "), ";
+                allMembersInsert += memberObj;
+            });
+            let trimmedAllMembersInsert = allMembersInsert.slice(0, allMembersInsert.length - 2);
+            trimmedAllMembersInsert += ";";
+            let membersInsertSQL = Constant.SQL_INSERT_INTO_CHANNEL_USER_BASE + trimmedAllMembersInsert;
+            return resolve({newChannelID: newChannelID, sqlCmd: membersInsertSQL});
+        });
+    });
+}
+
+//newChannelInsertMembers inserts given users at channel creation and
+// returns a promise indicating status of insertion
+function newChannelInsertMembers(db, sql) {
+    return new Promise((resolve, reject) => {
+        db.query(sql, (err, rows) => {
+            if (err) {
+                reject(err);
+            }
+            return resolve(true);
+        });
+    });
+}
+
 //queryDeletedUserFromChannel returns a promise whether the user was successfully deleted from a channel
 function queryDeleteUserFromChannel(db, sql, channelID, userID) {
     return new Promise((resolve, reject) => {
@@ -451,8 +463,8 @@ function getOGChannelNameAndDesc(sql, channelID) {
     });
 }
 
-//checkIfChannelUpdateNullEmpty checks if channel name or desc is empty/null
-function checkIfChannelUpdateNullEmpty(obj) {
+//checkIfNullEmpty checks if channel name or desc is empty/null
+function checkIfNullEmpty(obj) {
     return (!obj || obj === "");
 }
 
@@ -469,13 +481,30 @@ function updateChannelNameAndDesc(sql, name, desc, channelID) {
 }
 
 //queryChannelMembers returns a promise containing rows for finding members in a channel
-function queryChannelMembers(sql, channelID) {
+function queryChannelMembers(db, sql, channelID) {
     return new Promise((resolve, reject) => {
         db.query(sql, [channelID], (err, rows) => {
             if (err) {
                 reject(err);
             }
-            resolve(rows);
+            let members = [];
+            let creator = {};
+            rows.forEach((row) => {
+                let member = {id: row.id, userName: row.username, firstName: row.firstName,
+                    lastName: row.lastName, photoURL: row.photoURL};
+                members.push(member);
+                if (row.channelCreatorUserID === row.id) {
+                    creator = {id: row.id, userName: row.username, firstName: row.firstName,
+                        lastName: row.lastName, photoURL: row.photoURL};
+                }
+            });
+            console.log(rows[0]);
+            if (!rows[0].channelPrivate) {
+                members = [];
+            }
+            let channel = new Channel(rows[0].channelID, rows[0].channelName, rows[0].channelDescription,
+                rows[0].channelPrivate, members, rows[0].channelCreatedAt, creator, rows[0].channelEditedAt);
+            return resolve(channel);
         });
     });
 }
