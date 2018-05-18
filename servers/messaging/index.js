@@ -119,7 +119,7 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req, res);
         if (!user) { return }
-        let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, res);
+        let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, res);
         if (!creatorStatus) { return }
         let update = await getOGChannelNameAndDesc(db, req.params.channelID);
         if (!update) {
@@ -162,7 +162,7 @@ app.delete("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req, res);
         if (!user) { return }
-        let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, next, res);
+        let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, next, res);
         if (!creatorStatus) { return }
         let deleted = await deleteChannelAndMessages(db, req.params.channelID);
         res.set("Content-Type", "text/plain");
@@ -180,9 +180,13 @@ app.post("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
         let user = checkUserAuth(req, res);
         if (!user) { return }
-        let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, next, res);
+        let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, res);
         if (!creatorStatus) { return }
         let added = await queryAddUserToChannel(db, req.body.id, req.params.channelID);
+        if (added === duplicateError) {
+            res.set("Content-Type", "text/plain");
+            return res.status(400).send("Bad request: member already added to channel");
+        }
         if (!added) {
             res.set("Content-Type", "text/plain");
             return res.status(500).send("Server error adding user to channel");
@@ -199,7 +203,7 @@ app.delete("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
         let user = checkUserAuth(req, res);
         if (!user) { return }
-        let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, res);
+        let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, res);
         if (!creatorStatus) { return }
         let deleted = await queryDeleteUserFromChannel(db, req.params.channelID, req.body.id);
         if (!deleted) {
@@ -307,7 +311,7 @@ function verifyUserInChannel(db, userID, channelID) {
 
 //checkUserIsCreator checks if the user is the creator of a specified channel
 //and returns true or false accordingly
-function checkUserIsCreator(userID, channelID, res) {
+function checkUserIsCreator(db, userID, channelID, res) {
     return new Promise((resolve, reject) => {
         db.query(Constant.SQL_SELECT_CHANNEL_BY_ID, [channelID], (err, rows) => {
             if (err) {
@@ -470,6 +474,9 @@ function queryAddUserToChannel(db, userID, channelID) {
     return new Promise((resolve, reject) => {
         db.query(Constant.SQL_INSERT_INTO_CHANNEL_USER, [userID, channelID], (err, rows) => {
             if (err) {
+                if (err.message.startsWith(duplicateError)) {
+                    return resolve(duplicateError);
+                }
                 reject(err);
             }
             if (!rows) {
