@@ -33,11 +33,17 @@ module.exports = {
     SQL_ALTER_TABLE_BEFORE_CHANNEL_DELETE :      "alter table channels add constraint channel_user_ibfk_2" +
                                                  " foreign key (" + channel_id +") references channel_user (" + cu_channelID + ");",
 
-    SQL_DELETE_CHANNEL_AND_MESSAGES :            " delete c, m, cu" +
-                                                 " from channels c" +
-                                                 " join channel_user cu on cu." + cu_channelID + " = c." + channel_id +
-                                                 " join messages m on m." + message_chanID + " = c." + channel_id +
-                                                 " where c." + channel_id + "=?",
+    SQL_DELETE_CHANNEL :                         "delete channels" +
+                                                 " from channels" +
+                                                 " where " + channel_id + "=?",
+
+    SQL_DELETE_CU :                              "delete channel_user" +
+                                                 " from channel_user" +
+                                                 " where " + cu_channelID + "=?",
+
+    SQL_DELETE_CHANNEL_MESSAGES :                "delete messages" +
+                                                 " from messages" +
+                                                 " where " + message_chanID + "=?",
 
     SQL_SELECT_ALL_CHANNELS_FOR_USER :           "select * from channels c" +
                                                  " join channel_user cu on cu." + cu_channelID + " = c." + channel_id +

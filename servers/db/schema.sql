@@ -17,6 +17,7 @@ create table if not exists channels (
   channelPrivate bool not null default false,
   channelCreatedAt datetime,
   channelCreatorUserID int,
+  foreign key(channelCreatorUserID) references users(id),
   channelEditedAt datetime,
   unique(channelName)
 );
@@ -39,5 +40,6 @@ create table if not exists messages (
   mBody varchar(4000) not null,
   mCreatedAt datetime not null,
   mCreatorUserID int not null,
+  foreign key(mCreatorUserID) references users(id),
   mEditedAt datetime not null
 );

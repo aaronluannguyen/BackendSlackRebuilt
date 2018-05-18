@@ -25,7 +25,7 @@ app.use(express.json());
 app.get("/v1/channels", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
-        if (user === false) {
+        if (!user) {
             return res.status(401).send("Please sign in");
         }
         let channels = await getChannelsForUser(db, Constant.SQL_SELECT_ALL_CHANNELS_FOR_USER, false, user.id);
@@ -38,7 +38,7 @@ app.get("/v1/channels", async (req, res, next) => {
 app.post("/v1/channels", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
-        if (user === false) {
+        if (!user) {
             return res.status(401).send("Please sign in");
         }
         if (!req.body.name) {
@@ -63,11 +63,11 @@ app.post("/v1/channels", async (req, res, next) => {
 app.get("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
-        if (user === false) {
+        if (!user) {
             return res.status(401).send("Please sign in");
         }
         let valid = await verifyUserInChannel(db, user.id, req.params.channelID);
-        if (valid === false) {
+        if (!valid) {
             return res.status(403).send("Forbidden request. Not a part of this channel");
         }
         let msgs = await queryTop100Msgs(db, Constant.SQL_TOP_100_MESSAGES, req.params.channelID);
@@ -80,11 +80,11 @@ app.get("/v1/channels/:channelID", async (req, res, next) => {
 app.post("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
-        if (user === false) {
+        if (!user) {
             return res.status(401).send("Please sign in");
         }
         let valid = await verifyUserInChannel(db, user.id, req.params.channelID);
-        if (valid === false) {
+        if (!valid) {
             return res.status(403).send("Forbidden request. Not a part of this channel")
         }
         let dateNow = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -104,11 +104,11 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
 app.patch("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
-        if (user === false) {
+        if (!user) {
             return res.status(401).send("Please sign in");
         }
         let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID);
-        if (creatorStatus === false) {
+        if (!creatorStatus) {
             return res.status(403).send("Error: You are not the creator of this channel");
         }
         let update = await getOGChannelNameAndDesc(Constant.SQL_SELECT_CHANNEL_BY_ID, req.params.channelID);
@@ -143,40 +143,33 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
 app.delete("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
-        if (user === false) {
+        if (!user) {
             return res.status(401).send("Please sign in");
         }
         let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, next);
-        if (creatorStatus === false) {
+        if (!creatorStatus) {
             return res.status(403).send("Error: You are not the creator of this channel");
+        }
+        let deleted = await deleteChannelAndMessages(db, Constant.SQL_DELETE_CHANNEL, Constant.SQL_DELETE_CU,
+                                                    Constant.SQL_DELETE_CHANNEL_MESSAGES, req.params.channelID);
+        if (deleted) {
+            res.set("Content-Type", "text/plain");
+            res.send("Successfully deleted channel and messages in that channel");
         }
     } catch (err) {
         next(err);
     }
-
-    db.query(Constant.SQL_ALTER_TABLE_BEFORE_CHANNEL_DELETE, (err, rows) => {
-        if (err) {
-            return next(err);
-        }
-    });
-    db.query(Constant.SQL_DELETE_CHANNEL_AND_MESSAGES, [req.params.channelID], (err, rows) => {
-        if (err) {
-            return next(err);
-        }
-        res.set("Content-Type", "text/plain");
-        res.send("Successfully deleted channel and messages in that channel");
-    });
 });
 
 // Handle Endpoint: /v1/channels/{channelID}/members
 app.post("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
-        if (user === false) {
+        if (!user) {
             return res.status(401).send("Please sign in");
         }
         let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, next);
-        if (creatorStatus === false) {
+        if (!creatorStatus) {
             return res.status(403).send("Error: You are not the creator of this channel");
         }
         await queryAddUserToChannel(db, Constant.SQL_INSERT_INTO_CHANNEL_USER,
@@ -192,7 +185,7 @@ app.post("/v1/channels/:channelID/members", async (req, res, next) => {
 app.delete("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
-        if (user === false) {
+        if (!user) {
             return res.status(401).send("Please sign in");
         }
         let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID);
@@ -213,11 +206,11 @@ app.delete("/v1/channels/:channelID/members", async (req, res, next) => {
 app.patch("/v1/messages/:messageID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
-        if (user === false) {
+        if (!user) {
             return res.status(401).send("Please sign in");
         }
         let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID);
-        if (creator === false) {
+        if (!creator) {
             return res.status(403).send("Error: You are not the creator of this message");
         }
         await queryUpdateMsg(db, Constant.SQL_UPDATE_MESSAGE, req.body.body,
@@ -235,11 +228,11 @@ app.patch("/v1/messages/:messageID", async (req, res, next) => {
 app.delete("/v1/messages/:messageID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req);
-        if (user === false) {
+        if (!user) {
             return res.status(401).send("Please sign in");
         }
         let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID);
-        if (creator === false) {
+        if (!creator) {
             return res.status(403).send("Error: You are not the creator of this message");
         }
         let deleted = await queryDeleteMessage(db, Constant.SQL_DELETE_MESSAGE_BY_ID, req.params.messageID);
@@ -287,7 +280,7 @@ function verifyUserInChannel(db, userID, channelID) {
             if (rows.length === 0) {
                 return resolve(false);
             }
-            if (rows[0].channelPrivate === false) {
+            if (!rows[0].channelPrivate) {
                 return resolve(true);
             }
             rows.forEach((row) => {
@@ -588,5 +581,28 @@ function queryDeleteMessage(db, sql, messageID) {
             }
             resolve(true);
         });
+    });
+}
+
+//deleteChannelAndMessages queries to delete all data related to given channelID such as
+//from the channels, channel_user, and messages tables from the data base
+function deleteChannelAndMessages(db, sqlChannel, sqlCU, sqlMessages, channelID) {
+    return new Promise((resolve, reject) => {
+        db.query(sqlChannel, [channelID], (err, results) => {
+            if (err) {
+                reject(err);
+            }
+        });
+        db.query(sqlCU, [channelID], (err, results) => {
+            if (err) {
+                reject(err);
+            }
+        });
+        db.query(sqlMessages, [channelID], (err, results) => {
+            if (err) {
+                reject(err);
+            }
+        });
+        resolve(true);
     });
 }
