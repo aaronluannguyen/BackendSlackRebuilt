@@ -37,8 +37,6 @@ app.get("/v1/channels", async (req, res, next) => {
 
 app.post("/v1/channels", async (req, res, next) => {
     try {
-        let validJSON = IsJsonString(req.body, res);
-        if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
         if (!req.body.name) {
@@ -96,8 +94,6 @@ app.get("/v1/channels/:channelID", async (req, res, next) => {
 
 app.post("/v1/channels/:channelID", async (req, res, next) => {
     try {
-        let validJSON = IsJsonString(req.body, res);
-        console.log(validJSON);
         if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
@@ -122,8 +118,6 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
 
 app.patch("/v1/channels/:channelID", async (req, res, next) => {
     try {
-        let validJSON = IsJsonString(req.body, res);
-        if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
         let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, res);
@@ -187,8 +181,6 @@ app.delete("/v1/channels/:channelID", async (req, res, next) => {
 // Handle Endpoint: /v1/channels/{channelID}/members
 app.post("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
-        let validJSON = IsJsonString(req.body, res);
-        if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
         let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, res);
@@ -216,8 +208,6 @@ app.post("/v1/channels/:channelID/members", async (req, res, next) => {
 
 app.delete("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
-        let validJSON = IsJsonString(req.body, res);
-        if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
         let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, res);
@@ -237,8 +227,6 @@ app.delete("/v1/channels/:channelID/members", async (req, res, next) => {
 // Handle Endpoint: /v1/messages/{messageID}
 app.patch("/v1/messages/:messageID", async (req, res, next) => {
     try {
-        let validJSON = IsJsonString(req.body, res);
-        if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
         let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID, res);
@@ -289,19 +277,6 @@ app.use((err, req, res, next) => {
 app.listen(port, host, () => {
     console.log('server is listening at http://' + addr + '...');
 });
-
-//IsJsonString checks if string is valid json
-function IsJsonString(str, res) {
-    let stringJson = JSON.stringify(str);
-    try {
-        JSON.parse(stringJson);
-        return true;
-    } catch (e) {
-        res.set("Content-Type", "text/plain");
-        res.status(400).send("Bad request: request body is not valid json");
-        return false;
-    }
-}
 
 //checkUserAuth checks the x-user header to make sure the user is signed in
 //if user is signed in, the user, as json, is returned
