@@ -25,11 +25,8 @@ app.use(express.json());
 // Handle Endpoint: /v1/channels
 app.get("/v1/channels", async (req, res, next) => {
     try {
-        let user = checkUserAuth(req);
-        if (!user) {
-            res.set("Content-Type", "text/plain");
-            return res.status(401).send("Please sign in");
-        }
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
         let channels = await getChannelsForUser(db, false, user.id);
         res.json(channels);
     } catch (err) {
@@ -39,11 +36,8 @@ app.get("/v1/channels", async (req, res, next) => {
 
 app.post("/v1/channels", async (req, res, next) => {
     try {
-        let user = checkUserAuth(req);
-        if (!user) {
-            res.set("Content-Type", "text/plain");
-            return res.status(401).send("Please sign in");
-        }
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
         if (!req.body.name) {
             res.set("Content-Type", "text/plain");
             return res.status(400).send("Please provide name for channel");
@@ -83,11 +77,8 @@ app.post("/v1/channels", async (req, res, next) => {
 // Handle Endpoint: /v1/channels/{channelID}
 app.get("/v1/channels/:channelID", async (req, res, next) => {
     try {
-        let user = checkUserAuth(req);
-        if (!user) {
-            res.set("Content-Type", "text/plain");
-            return res.status(401).send("Please sign in");
-        }
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
         let valid = await verifyUserInChannel(db, user.id, req.params.channelID);
         if (!valid) {
             res.set("Content-Type", "text/plain");
@@ -102,11 +93,8 @@ app.get("/v1/channels/:channelID", async (req, res, next) => {
 
 app.post("/v1/channels/:channelID", async (req, res, next) => {
     try {
-        let user = checkUserAuth(req);
-        if (!user) {
-            res.set("Content-Type", "text/plain");
-            return res.status(401).send("Please sign in");
-        }
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
         let valid = await verifyUserInChannel(db, user.id, req.params.channelID);
         if (!valid) {
             res.set("Content-Type", "text/plain");
@@ -129,11 +117,8 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
 
 app.patch("/v1/channels/:channelID", async (req, res, next) => {
     try {
-        let user = checkUserAuth(req);
-        if (!user) {
-            res.set("Content-Type", "text/plain");
-            return res.status(401).send("Please sign in");
-        }
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
         let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID);
         if (!creatorStatus) {
             res.set("Content-Type", "text/plain");
@@ -178,11 +163,8 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
 
 app.delete("/v1/channels/:channelID", async (req, res, next) => {
     try {
-        let user = checkUserAuth(req);
-        if (!user) {
-            res.set("Content-Type", "text/plain");
-            return res.status(401).send("Please sign in");
-        }
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
         let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, next);
         if (!creatorStatus) {
             res.set("Content-Type", "text/plain");
@@ -202,11 +184,8 @@ app.delete("/v1/channels/:channelID", async (req, res, next) => {
 // Handle Endpoint: /v1/channels/{channelID}/members
 app.post("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
-        let user = checkUserAuth(req);
-        if (!user) {
-            res.set("Content-Type", "text/plain");
-            return res.status(401).send("Please sign in");
-        }
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
         let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID, next);
         if (!creatorStatus) {
             res.set("Content-Type", "text/plain");
@@ -227,11 +206,8 @@ app.post("/v1/channels/:channelID/members", async (req, res, next) => {
 
 app.delete("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
-        let user = checkUserAuth(req);
-        if (!user) {
-            res.set("Content-Type", "text/plain");
-            return res.status(401).send("Please sign in");
-        }
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
         let creatorStatus = await checkUserIsCreator(user.id, req.params.channelID);
         if (!creatorStatus) {
             res.set("Content-Type", "text/plain");
@@ -252,11 +228,8 @@ app.delete("/v1/channels/:channelID/members", async (req, res, next) => {
 // Handle Endpoint: /v1/messages/{messageID}
 app.patch("/v1/messages/:messageID", async (req, res, next) => {
     try {
-        let user = checkUserAuth(req);
-        if (!user) {
-            res.set("Content-Type", "text/plain");
-            return res.status(401).send("Please sign in");
-        }
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
         let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID);
         if (!creator) {
             res.set("Content-Type", "text/plain");
@@ -281,11 +254,8 @@ app.patch("/v1/messages/:messageID", async (req, res, next) => {
 
 app.delete("/v1/messages/:messageID", async (req, res, next) => {
     try {
-        let user = checkUserAuth(req);
-        if (!user) {
-            res.set("Content-Type", "text/plain");
-            return res.status(401).send("Please sign in");
-        }
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
         let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID);
         if (!creator) {
             res.set("Content-Type", "text/plain");
@@ -318,9 +288,11 @@ app.listen(port, host, () => {
 //checkUserAuth checks the x-user header to make sure the user is signed in
 //if user is signed in, the user, as json, is returned
 //if not signed in, returns false
-function checkUserAuth(req) {
+function checkUserAuth(req, res) {
     let userJson = req.get("X-User");
     if (!userJson) {
+        res.set("Content-Type", "text/plain");
+        res.status(401).send("Error: Please sign in");
         return false;
     }
     let user = JSON.parse(userJson);
