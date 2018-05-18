@@ -5,6 +5,7 @@ let Channel = require("./models/channel");
 let Message = require("./models/message");
 let Constant = require("./models/sqlConstants");
 const duplicateError = "ER_DUP_ENTRY";
+const nonexistError = "ER_NO_REFERENCED";
 
 const mysql = require("mysql");
 const express = require("express");
@@ -36,6 +37,8 @@ app.get("/v1/channels", async (req, res, next) => {
 
 app.post("/v1/channels", async (req, res, next) => {
     try {
+        let validJSON = IsJsonString(req.body, res);
+        if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
         if (!req.body.name) {
@@ -93,6 +96,9 @@ app.get("/v1/channels/:channelID", async (req, res, next) => {
 
 app.post("/v1/channels/:channelID", async (req, res, next) => {
     try {
+        let validJSON = IsJsonString(req.body, res);
+        console.log(validJSON);
+        if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
         let valid = await verifyUserInChannel(db, user.id, req.params.channelID);
@@ -101,8 +107,7 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
             return res.status(403).send("Forbidden request. Not a part of this channel")
         }
         let dateNow = new Date().toISOString().slice(0, 19).replace('T', ' ');
-        let results = await queryPostMessage(db, req.params.channelID, req.body.body, dateNow, user.id);
-        let newMessageID = results.insertId;
+        let newMessageID = await queryPostMessage(db, req.params.channelID, req.body.body, dateNow, user.id);
         let msg = await queryMessageByID(db, newMessageID);
         if (!msg) {
             res.set("Content-Type", "text/plain");
@@ -117,6 +122,8 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
 
 app.patch("/v1/channels/:channelID", async (req, res, next) => {
     try {
+        let validJSON = IsJsonString(req.body, res);
+        if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
         let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, res);
@@ -144,7 +151,8 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
         }
         let updated = await updateChannelNameAndDesc(db, newName, newDesc, req.params.channelID);
         if (!updated) {
-
+            res.set("Content-Type", "text/plain");
+            return res.status(400).send("Error: Channel does not exist");
         }
         let channel = await queryChannelMembers(db, req.params.channelID);
         if (!channel) {
@@ -178,6 +186,8 @@ app.delete("/v1/channels/:channelID", async (req, res, next) => {
 // Handle Endpoint: /v1/channels/{channelID}/members
 app.post("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
+        let validJSON = IsJsonString(req.body, res);
+        if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
         let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, res);
@@ -186,6 +196,10 @@ app.post("/v1/channels/:channelID/members", async (req, res, next) => {
         if (added === duplicateError) {
             res.set("Content-Type", "text/plain");
             return res.status(400).send("Bad request: member already added to channel");
+        }
+        if (added === nonexistError) {
+            res.set("Content-Type", "text/plain");
+            return res.status(400).send("Bad request: member does not exist");
         }
         if (!added) {
             res.set("Content-Type", "text/plain");
@@ -201,6 +215,8 @@ app.post("/v1/channels/:channelID/members", async (req, res, next) => {
 
 app.delete("/v1/channels/:channelID/members", async (req, res, next) => {
     try {
+        let validJSON = IsJsonString(req.body, res);
+        if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
         let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, res);
@@ -220,6 +236,8 @@ app.delete("/v1/channels/:channelID/members", async (req, res, next) => {
 // Handle Endpoint: /v1/messages/{messageID}
 app.patch("/v1/messages/:messageID", async (req, res, next) => {
     try {
+        let validJSON = IsJsonString(req.body, res);
+        if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
         let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID, res);
@@ -271,6 +289,18 @@ app.listen(port, host, () => {
     console.log('server is listening at http://' + addr + '...');
 });
 
+//IsJsonString checks if string is valid json
+function IsJsonString(str, res) {
+    try {
+        JSON.parse(str);
+        return true;
+    } catch (e) {
+        res.set("Content-Type", "text/plain");
+        res.status(400).send("Bad request: request body is not valid json");
+        return false;
+    }
+}
+
 //checkUserAuth checks the x-user header to make sure the user is signed in
 //if user is signed in, the user, as json, is returned
 //if not signed in, returns false
@@ -317,10 +347,15 @@ function checkUserIsCreator(db, userID, channelID, res) {
             if (err) {
                 reject(err);
             }
-            if (rows.length === 0) {
+            if (!rows || rows.length === 0) {
                 res.set("Content-Type", "text/plain");
                 res.status(403).send("Error: You are not the creator of this channel");
                 return resolve(false);
+            }
+            if (!rows[0].channelPrivate) {
+                res.set("Content-Type", "text/plain");
+                res.status(400).send("Bad request: This is a public channel");
+                return resolve(false)
             }
             if (rows[0].channelCreatorUserID === userID) {
                 return resolve(true);
@@ -416,7 +451,7 @@ function insertNewChannel(db, name, descr, isPrivate, date, userID, members) {
                 }
                 reject(err);
             }
-            if (!results) {
+            if (results.affectedRows === 0) {
                 return resolve(false);
             }
             let newChannelID = results.insertId;
@@ -446,7 +481,7 @@ function newChannelInsertMembers(db, sql) {
                 return resolve(false);
                 reject(err);
             }
-            if (!rows) {
+            if (rows.affectedRows === 0) {
                 return resolve(false)
             }
             return resolve(true);
@@ -457,14 +492,14 @@ function newChannelInsertMembers(db, sql) {
 //queryDeleteUserFromChannel returns a promise whether the user was successfully deleted from a channel
 function queryDeleteUserFromChannel(db, channelID, userID) {
     return new Promise((resolve, reject) => {
-        db.query(Constant.SQL_DELETE_USER_FROM_CHANNEL, [channelID, userID], (err, rows) => {
+        db.query(Constant.SQL_DELETE_USER_FROM_CHANNEL, [channelID, userID], (err, results) => {
             if (err) {
                 reject(err);
             }
-            if (rows.length === 0) {
+            if (results.affectedRows === 0) {
                 return resolve(false);
             }
-            resolve(true);
+            return resolve(true);
         });
     });
 }
@@ -472,14 +507,17 @@ function queryDeleteUserFromChannel(db, channelID, userID) {
 //queryAddUserToChannel returns a promise that indicates if a user was successfully added to a channel
 function queryAddUserToChannel(db, userID, channelID) {
     return new Promise((resolve, reject) => {
-        db.query(Constant.SQL_INSERT_INTO_CHANNEL_USER, [userID, channelID], (err, rows) => {
+        db.query(Constant.SQL_INSERT_INTO_CHANNEL_USER, [userID, channelID], (err, results) => {
             if (err) {
                 if (err.message.startsWith(duplicateError)) {
                     return resolve(duplicateError);
                 }
+                if (err.message.startsWith(nonexistError)) {
+                    return resolve(nonexistError);
+                }
                 reject(err);
             }
-            if (!rows) {
+            if (results.affectedRows === 0) {
                 return resolve(false);
             }
             resolve(true);
@@ -510,11 +548,11 @@ function checkIfNullEmpty(obj) {
 //updateChannelNameAndDesc returns a promise if successfully updated channel
 function updateChannelNameAndDesc(db, name, desc, channelID) {
     return new Promise((resolve, reject) => {
-        db.query(Constant.SQL_UPDATE_CHANNEL_NAME_DESC, [name, desc, channelID], (err, rows) => {
+        db.query(Constant.SQL_UPDATE_CHANNEL_NAME_DESC, [name, desc, channelID], (err, results) => {
             if (err) {
                 reject(err);
             }
-            if (!rows || rows === "") {
+            if (results.affectedRows === 0) {
                 return resolve(false);
             }
             resolve(true);
@@ -560,7 +598,10 @@ function queryPostMessage(db, channelID, body, date, userID) {
             if (err) {
                 reject(err);
             }
-            resolve(results);
+            if (results.affectedRows === 0) {
+                return resolve(false);
+            }
+            resolve(results.insertId);
         });
     });
 }
