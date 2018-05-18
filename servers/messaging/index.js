@@ -149,7 +149,8 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
         if (!checkIfNullEmpty(req.body.description)) {
             newDesc = req.body.description;
         }
-        let updated = await updateChannelNameAndDesc(db, newName, newDesc, req.params.channelID);
+        let timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
+        let updated = await updateChannelNameAndDesc(db, newName, newDesc, req.params.channelID, timestamp);
         if (!updated) {
             res.set("Content-Type", "text/plain");
             return res.status(400).send("Error: Channel does not exist");
@@ -291,8 +292,9 @@ app.listen(port, host, () => {
 
 //IsJsonString checks if string is valid json
 function IsJsonString(str, res) {
+    let stringJson = JSON.stringify(str);
     try {
-        JSON.parse(str);
+        JSON.parse(stringJson);
         return true;
     } catch (e) {
         res.set("Content-Type", "text/plain");
@@ -546,9 +548,9 @@ function checkIfNullEmpty(obj) {
 }
 
 //updateChannelNameAndDesc returns a promise if successfully updated channel
-function updateChannelNameAndDesc(db, name, desc, channelID) {
+function updateChannelNameAndDesc(db, name, desc, channelID, date) {
     return new Promise((resolve, reject) => {
-        db.query(Constant.SQL_UPDATE_CHANNEL_NAME_DESC, [name, desc, channelID], (err, results) => {
+        db.query(Constant.SQL_UPDATE_CHANNEL_NAME_DESC, [name, desc, channelID, date], (err, results) => {
             if (err) {
                 reject(err);
             }

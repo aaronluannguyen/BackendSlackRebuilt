@@ -28,7 +28,7 @@ const message_editedAt = "mEditedAt";
 module.exports = {
     // SQL Commands
     SQL_SELECT_CHANNEL_BY_ID :                   "select * from channels where " + channel_id + "=?",
-    SQL_UPDATE_CHANNEL_NAME_DESC :               "update channels set " + channel_name + "=?, " + channel_desc + "=? where " + channel_id + "=?",
+    SQL_UPDATE_CHANNEL_NAME_DESC :               "update channels set " + channel_name + "=?, " + channel_desc + "=?, " + channel_editedAt + "=? where " + channel_id + "=?",
 
     SQL_DELETE_CHANNEL :                         "delete channels" +
                                                  " from channels" +
