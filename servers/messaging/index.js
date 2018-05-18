@@ -350,7 +350,7 @@ function getChannelsForUser(db, sql, bool, userID) {
                 {}, rows[0].channelEditedAt);
             rows.forEach((row) => {
                 if (row.channelID !== currChannelID) {
-                    if (channel.isPrivate === 0) {
+                    if (!channel.private) {
                         channel.members = [];
                     }
                     channels.push(channel);
@@ -374,7 +374,7 @@ function getChannelsForUser(db, sql, bool, userID) {
                     }
                 }
             });
-            if (channel.isPrivate === 0) {
+            if (channel.private === 0) {
                 channel.members = [];
             }
             channels.push(channel);
