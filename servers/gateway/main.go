@@ -44,6 +44,9 @@ func main() {
 	summaryServiceAddrs := reqEnv("SUMMARYADDR")
 	messagesServiceAddrs := reqEnv("MESSAGESADDR")
 
+	mqAddr := reqEnv("MQADDR")
+	mqName := reqEnv("MQNAME")
+
 	addr := os.Getenv("ADDR")
 	if len(addr) == 0 {
 		addr = ":443"
@@ -59,6 +62,8 @@ func main() {
 		Password: "",
 		DB: 0,
 	})
+
+	handlers.StartMQ(mqAddr, mqName)
 
 	sessionsStore := sessions.NewRedisStore(redisClient, time.Hour)
 	usersStore := users.NewMySQLStore(db)
