@@ -17,4 +17,5 @@ type Context struct {
 	SessionStore 	sessions.Store
 	UsersStore 		users.Store
 	Trie 			*indexes.Trie
+	Notifier 		*Notifier
 }

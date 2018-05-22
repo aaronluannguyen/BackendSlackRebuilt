@@ -66,11 +66,14 @@ func main() {
 	if err != nil {
 		trie = indexes.NewTrie()
 	}
+	notifier := handlers.NewNotifier()
+
 	hctx := handlers.Context {
 		SigningKey: sessionKey,
 		SessionStore: sessionsStore,
 		UsersStore: usersStore,
 		Trie: trie,
+		Notifier: notifier,
 	}
 
 	tlsKeyPath := os.Getenv("TLSKEY")
@@ -89,6 +92,7 @@ func main() {
 	r.Handle("/v1/channels/{channelID}", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
 	r.Handle("/v1/channels/{channelID}/members", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
 	r.Handle("/v1/messages/{messageID}", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
+	r.Handle("/v1/ws", handlers.NewWebSocketsHandler(notifier, hctx))
 
 	corsWrappedMux := handlers.WrappedCORSHandler(r)
 
