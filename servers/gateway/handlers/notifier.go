@@ -28,14 +28,15 @@ func (n *Notifier) AddClient(client *websocket.Conn, userID int64) {
 	defer n.mx.Unlock()
 
 	n.clients[userID] = client
-	go processControlMsgs(n, userID)
+	go n.processControlMsgs(userID)
 }
 
-func processControlMsgs(n *Notifier, userID int64) {
+func (n *Notifier) processControlMsgs(userID int64) {
 	for {
 		if _, _, err := n.clients[userID].NextReader(); err != nil {
 			n.clients[userID].Close()
 			delete(n.clients, userID)
+			break
 		}
 	}
 }
