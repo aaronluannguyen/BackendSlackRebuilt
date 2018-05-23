@@ -101,7 +101,8 @@ app.post("/v1/channels", async (req, res, next) => {
         }
         res.status(201);
         res.json(channel);
-        channelSendBodyChannel("channel-new", channel, channel.members);
+        let userIDs = getUserIDs(channel.members);
+        channelSendBodyChannel("channel-new", channel, userIDs);
     } catch (err) {
         next(err);
     }
@@ -144,7 +145,8 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
         res.status(201);
         res.json(msg);
         let channel = queryChannelMembers(db, req.params.channelID);
-        channelSendBodyMessage("message-new", msg, channel.members);
+        let userIDs = getUserIDs(channel.members);
+        channelSendBodyMessage("message-new", msg, userIDs);
     } catch (err) {
         next(err);
     }
@@ -190,7 +192,8 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
         }
         res.status(201);
         res.json(channel);
-        channelSendBodyChannel("channel-update", channel, channel.members);
+        let userIDs = getUserIDs(channel.members);
+        channelSendBodyChannel("channel-update", channel, userIDs);
     } catch (err) {
         next(err);
     }
@@ -209,7 +212,8 @@ app.delete("/v1/channels/:channelID", async (req, res, next) => {
         }
         res.send("Successfully deleted channel and messages in that channel");
         let channel = queryChannelMembers(db, req.params.channelID);
-        let msg = {msgType: "channel-delete", msg: req.params.channelID, userIDs: channel.members};
+        let userIDs = getUserIDs(channel.members);
+        let msg = {msgType: "channel-delete", msg: req.params.channelID, userIDs: userIDs};
         channelMQ.sendToQueue(q, new Buffer(msg.stringify()))
     } catch (err) {
         next(err);
@@ -282,7 +286,8 @@ app.patch("/v1/messages/:messageID", async (req, res, next) => {
         }
         res.json(msg);
         let channel = queryChannelMembers(db, req.params.channelID);
-        channelSendBodyMessage("message-update", msg, channel.members);
+        let userIDs = getUserIDs(channel.members);
+        channelSendBodyMessage("message-update", msg, userIDs);
     } catch (err) {
         next(err);
     }
@@ -302,7 +307,8 @@ app.delete("/v1/messages/:messageID", async (req, res, next) => {
         res.set(contentType, headerTxt);
         res.send("Successfully deleted message");
         let channel = queryChannelMembers(db, req.params.channelID);
-        let msgJson = {msgType: "message-delete", msg: req.params.messageID, userIDs: channel.members};
+        let userIDs = getUserIDs(channel.members);
+        let msgJson = {msgType: "message-delete", msg: req.params.messageID, userIDs: userIDs};
         channelMQ.sendToQueue(q, new Buffer(msgJson.stringify()));
     } catch (err) {
         next(err);
@@ -740,4 +746,13 @@ function channelSendBodyChannel(type, channelObj, userIDs) {
 function channelSendBodyMessage(type, message, userIDs) {
     let msgJson = {msgType: type, msg: message, userIDs: userIDs};
     channelMQ.sendToQueue(q, new Buffer(msgJson.stringify()))
+}
+
+//getUerIDs returns an array of user ids
+function getUserIDs(users) {
+    let userIDs =[];
+    for (let i = 0; i < users.length; i++) {
+        userIDs.push(users[i].id);
+    }
+    return userIDs;
 }

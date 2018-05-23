@@ -1,6 +1,10 @@
 import React from "react";
 import {AJAX, ROUTES} from "../constants"
 import SearchResults from "../Components/SearchResults";
+import ChannelMessages from "../Components/ChannelMessages";
+import NewMessage from "../Components/NewMessage";
+import "./Main.css";
+import Channels from "../Components/Channels";
 
 export default class MainView extends React.Component {
     constructor(props) {
@@ -214,6 +218,16 @@ export default class MainView extends React.Component {
                             :
                             undefined
                     }
+                </div>
+                <div className="container">
+                    <Channels/>
+                    <div id="channel-messages">
+                        <ChannelMessages userInfo={this.state.userInfo} channelMessageSnap={this.state.channelMessageSnap}/>
+                        <div id="bottom-channel-messages" ref={bottomPlace => {this.bottom = bottomPlace;}}/>
+                    </div>
+                    <div>
+                        <NewMessage id="text-input" channelMessageRef={this.state.channelMessageRef} userInfo={this.state.userInfo}/>
+                    </div>
                 </div>
             </div>
         );

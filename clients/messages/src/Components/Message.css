@@ -1,0 +1,44 @@
+* {
+    box-sizing: border-box;
+}
+
+.card-body {
+    padding: 20px 15px;
+}
+
+#message-header {
+    display: flex;
+}
+
+#message-header img {
+    padding-right: 10px;
+}
+
+#actual-message {
+    margin-bottom: 0px;
+}
+
+#edit-buttons {
+    padding: 0px;
+}
+
+#edit-buttons
+.btn-danger,
+.btn-warning,
+.btn-success {
+    margin-top: 10px;
+    margin-right: 10px;
+}
+
+#text-input-bar {
+    margin-bottom: 10px;
+}
+
+#timestamp {
+    font-size: 0.8rem;
+    color: grey;
+}
+
+#username {
+    font-weight: bold;
+}
