@@ -77,6 +77,6 @@ func (ctx Context) processMessages(msgs <- chan amqp.Delivery) {
 
 type mqMsg struct {
 	MsgType 		string 			`json:"msgType"`
-	Msg				interface{}		`json:"msg"`
+	Msg				interface{}		`json:"msg,omitempty"`
 	UserIDs			[]int64			`json:"userIDs"`
 }
