@@ -63,8 +63,6 @@ func main() {
 		DB: 0,
 	})
 
-	handlers.StartMQ(mqAddr, mqName)
-
 	sessionsStore := sessions.NewRedisStore(redisClient, time.Hour)
 	usersStore := users.NewMySQLStore(db)
 	trie, err := usersStore.LoadExistingUsersToTrie()
@@ -80,6 +78,8 @@ func main() {
 		Trie: trie,
 		Notifier: notifier,
 	}
+
+	hctx.StartMQ(mqAddr, mqName)
 
 	tlsKeyPath := os.Getenv("TLSKEY")
 	tlsCertPath := os.Getenv("TLSCERT")

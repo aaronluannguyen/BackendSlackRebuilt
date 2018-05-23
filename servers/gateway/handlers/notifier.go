@@ -3,23 +3,19 @@ package handlers
 import (
 	"github.com/gorilla/websocket"
 	"sync"
+	"encoding/json"
+	"github.com/labstack/gommon/log"
 )
 
 //Notifier is an object that handles WebSocket notifications
 type Notifier struct {
-	// MAY NOT NEED EVENTQ
-	eventQ chan []byte
 	clients map[int64]*websocket.Conn
 	mx sync.RWMutex
 }
 
 //NewNotifier constructs a new Notifier
 func NewNotifier() *Notifier {
-	n := &Notifier{
-		eventQ: make(chan []byte, 1024), //buffered channel that can hold 1024 slices at a time
-	}
-	go n.start()
-	return n
+	return &Notifier{}
 }
 
 //AddClient adds a new client to the Notifier
@@ -41,29 +37,31 @@ func (n *Notifier) processControlMsgs(userID int64) {
 	}
 }
 
-// MAY NOT NEED ANYTHING BELOW
-//Notify broadcasts the event to all WebSocket clients
-func (n *Notifier) Notify(event []byte) {
-	n.mx.Lock()
-	defer n.mx.Unlock()
-
-	n.eventQ <- event
+func (n *Notifier) start(msg *mqMsg, users []int64) {
+	jsonMsg, err := json.Marshal(msg)
+	if err != nil {
+		log.Errorf("error marshalling mqMsg object: %v", err)
+		return
+	}
+	prepMsg, err := websocket.NewPreparedMessage(websocket.TextMessage, jsonMsg)
+	if err != nil {
+		log.Errorf("error writing a new prepared message: %v", err)
+		return
+	}
+	if len(users) == 0 {
+		for userID, conn := range n.clients {
+			n.writePreppedMsg(prepMsg, userID, conn)
+		}
+	} else {
+		for _, userID := range users {
+			n.writePreppedMsg(prepMsg, userID, n.clients[userID])
+		}
+	}
 }
 
-//start starts the notification loop
-func (n *Notifier) start() {
-	n.mx.RLock()
-	defer n.mx.RUnlock()
-
-	for evt := range n.eventQ {
-		prepMsg, err := websocket.NewPreparedMessage(websocket.TextMessage, evt)
-		if err != nil {
-			//handle error
-		}
-		for user, conn := range n.clients {
-			if err = conn.WritePreparedMessage(prepMsg); err != nil {
-				delete(n.clients, user)
-			}
-		}
+//writePreppedMsg writes a prepared message to the given connection
+func (n *Notifier) writePreppedMsg(msg *websocket.PreparedMessage, userID int64, conn *websocket.Conn) {
+	if err := conn.WritePreparedMessage(msg); err != nil {
+		delete(n.clients, userID)
 	}
 }

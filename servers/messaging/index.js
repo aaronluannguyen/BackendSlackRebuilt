@@ -23,6 +23,19 @@ let db = mysql.createPool({
     password: process.env.MYSQL_ROOT_PASSWORD
 });
 
+let channelMQ;
+let q;
+let mqAddr = 'amqp://' + process.env.MQADDR;
+
+let amqp = require('amqplib/callback_api');
+amqp.connect(mqAddr, (err, conn) => {
+    conn.createChannel((err, ch) => {
+        channelMQ = ch;
+        q = process.env.MQNAME;
+        channelMQ.assertQueue(q, {durable: false});
+    })
+});
+
 app.use(express.json());
 
 // Handle Endpoint: /v1/channels
@@ -72,6 +85,7 @@ app.post("/v1/channels", async (req, res, next) => {
         }
         res.status(201);
         res.json(channel);
+        channelSendBodyChannel("channel-new", channel, channel.members);
     } catch (err) {
         next(err);
     }
@@ -113,6 +127,8 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
         }
         res.status(201);
         res.json(msg);
+        let channel = queryChannelMembers(db, req.params.channelID);
+        channelSendBodyMessage("message-new", msg, channel.members);
     } catch (err) {
         next(err);
     }
@@ -158,6 +174,7 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
         }
         res.status(201);
         res.json(channel);
+        channelSendBodyChannel("channel-update", channel, channel.members);
     } catch (err) {
         next(err);
     }
@@ -175,6 +192,9 @@ app.delete("/v1/channels/:channelID", async (req, res, next) => {
             res.status(400).send("Bad request: message does not exist");
         }
         res.send("Successfully deleted channel and messages in that channel");
+        let channel = queryChannelMembers(db, req.params.channelID);
+        let msg = {msgType: "channel-delete", msg: req.params.channelID, userIDs: channel.members};
+        channelMQ.sendToQueue(q, new Buffer(msg.stringify()))
     } catch (err) {
         next(err);
     }
@@ -245,6 +265,8 @@ app.patch("/v1/messages/:messageID", async (req, res, next) => {
             return res.status(400).send("Message does not exist");
         }
         res.json(msg);
+        let channel = queryChannelMembers(db, req.params.channelID);
+        channelSendBodyMessage("message-update", msg, channel.members);
     } catch (err) {
         next(err);
     }
@@ -263,6 +285,9 @@ app.delete("/v1/messages/:messageID", async (req, res, next) => {
         }
         res.set(contentType, headerTxt);
         res.send("Successfully deleted message");
+        let channel = queryChannelMembers(db, req.params.channelID);
+        let msgJson = {msgType: "message-delete", msg: req.params.messageID, userIDs: channel.members};
+        channelMQ.sendToQueue(q, new Buffer(msgJson.stringify()));
     } catch (err) {
         next(err);
     }
@@ -687,4 +712,16 @@ function deleteChannelAndMessages(db, channelID) {
             });
         });
     });
+}
+
+//channelSendBoydChannel sends to the message queue an obj with a channel as the second field
+function channelSendBodyChannel(type, channelObj, userIDs) {
+    let msgJson = {msgType: type, msg: channelObj, userIDs: userIDs};
+    channelMQ.sendToQueue(q, new Buffer(msgJson.stringify()));
+}
+
+//channelSendBodyMessage sends to the message queue an obj with a message as the second field
+function channelSendBodyMessage(type, message, userIDs) {
+    let msgJson = {msgType: type, msg: message, userIDs: userIDs};
+    channelMQ.sendToQueue(q, new Buffer(msgJson.stringify()))
 }
