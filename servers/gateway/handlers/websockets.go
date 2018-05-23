@@ -7,8 +7,6 @@ import (
 	"fmt"
 )
 
-const maxConnRetries = 5
-
 //TODO: add a handler that upgrades clients to a WebSocket connection
 //and adds that to a list of WebSockets to notify when events are
 //read from the RabbitMQ server. Remember to synchronize changes

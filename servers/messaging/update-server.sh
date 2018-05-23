@@ -3,8 +3,8 @@ export MYSQL_ROOT_PASSWORD=qejblkafuhqieuhgqeu1239
 export MYSQL_DATABASE=users
 export MYSQL_ADDR=usersdb
 export ADDR=messagesmicroservice:80
-export MQADDR=api.aaronluannguyen.me:5672
-export MQNAME=aaronluannguyenMQ
+export MQADDR=aaronluannguyenmq:5672
+export MQNAME=aaronluannguyenmq
 
 docker pull aaronluannguyen/messagesmicroservice
 docker rm -f messagesmicroservice

@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+const maxConnRetries = 5
+
 //StartMQ starts a go routine that connects to a rabbitMQ server and reads new events
 //from the message queue
 func (ctx Context) StartMQ(mqAddr string, mqName string) {
@@ -50,6 +52,7 @@ func ConnectToMQ(addr string) (*amqp.Connection, error) {
 	for i := 1; i <= maxConnRetries; i++ {
 		conn, err = amqp.Dial(mqURL)
 		if err == nil {
+			log.Printf("successfully connected to MQ")
 			return conn, nil
 		}
 		time.Sleep(time.Second * time.Duration(i * 2))

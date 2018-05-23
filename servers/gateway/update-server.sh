@@ -16,7 +16,7 @@ export SESSIONKEY=qlwfnfvdfvkbubiu9859b
 export DSN="root:$MYSQL_ROOT_PASSWORD@tcp($MYSQL_ADDR)/$MYSQL_DATABASE"
 export SUMMARYADDR=summarymicroservice:80
 export MESSAGESADDR=messagesmicroservice:80
-export MQADDR=api.aaronluannguyen.me:5672
+export MQADDR=aaronluannguyenMQ:5672
 export MQNAME=aaronluannguyenMQ
 
 docker pull aaronluannguyen/usersdb
@@ -32,6 +32,11 @@ docker run -d \
 --name redissvr \
 --network aaronchatnet \
 redis
+
+docker run -d \
+--network aaronchatnet \
+--name aaronluannguyenmq \
+rabbitmq:3-alpine
 
 docker run -d --name gatewayinfo344 \
 --network aaronchatnet \

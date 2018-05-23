@@ -25,16 +25,32 @@ let db = mysql.createPool({
 
 let channelMQ;
 let q;
-let mqAddr = 'amqp://' + process.env.MQADDR;
+let mqAddr = process.env.MQADDR;
+let mqURL = 'amqp://' + mqAddr;
+let maxConnRetries = 15;
+let mqConnTries = 0;
 
 let amqp = require('amqplib/callback_api');
-amqp.connect(mqAddr, (err, conn) => {
-    conn.createChannel((err, ch) => {
-        channelMQ = ch;
-        q = process.env.MQNAME;
-        channelMQ.assertQueue(q, {durable: false});
-    })
-});
+
+let connection = setInterval(connectToMQ, 3000);
+
+function connectToMQ() {
+    if (mqConnTries <= maxConnRetries) {
+        amqp.connect(mqURL, (err, conn) => {
+            if (!err && conn) {
+                conn.createChannel((err, ch) => {
+                    channelMQ = ch;
+                    q = process.env.MQNAME;
+                    channelMQ.assertQueue(q, {durable: false});
+                });
+                console.log("successfully connected to MQ");
+                clearInterval(connection);
+            }
+        });
+    } else {
+        console.log("Error: unable to connect to MQ");
+    }
+}
 
 app.use(express.json());
 
