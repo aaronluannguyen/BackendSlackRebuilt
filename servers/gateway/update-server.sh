@@ -2,6 +2,7 @@
 docker rm -f gatewayinfo344
 docker rm -f usersdb
 docker rm -f redissvr
+docker rm -f aaronluannguyenmq
 
 docker network rm aaronchatnet
 docker network create aaronchatnet
@@ -16,8 +17,8 @@ export SESSIONKEY=qlwfnfvdfvkbubiu9859b
 export DSN="root:$MYSQL_ROOT_PASSWORD@tcp($MYSQL_ADDR)/$MYSQL_DATABASE"
 export SUMMARYADDR=summarymicroservice:80
 export MESSAGESADDR=messagesmicroservice:80
-export MQADDR=aaronluannguyenMQ:5672
-export MQNAME=aaronluannguyenMQ
+export MQADDR=aaronluannguyenmq:5672
+export MQNAME=aaronluannguyenmq
 
 docker pull aaronluannguyen/usersdb
 docker run -d \

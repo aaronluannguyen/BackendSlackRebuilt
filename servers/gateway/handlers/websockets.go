@@ -27,18 +27,19 @@ import (
 
 //WebSocketsHandler is a handler for WebSocket upgrade requests
 type WebSocketsHandler struct {
-	notifier *Notifier
 	upgrader websocket.Upgrader
 	ctx Context
 }
 
 //NewWebSocketsHandler constructs a new WebSocketsHandler
-func NewWebSocketsHandler(notifier *Notifier, ctx Context) *WebSocketsHandler {
+func NewWebSocketsHandler(ctx Context) *WebSocketsHandler {
 	newWSH := &WebSocketsHandler{
-		notifier: notifier,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize: 1024,
 			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
 		},
 		ctx: ctx,
 	}
@@ -47,7 +48,7 @@ func NewWebSocketsHandler(notifier *Notifier, ctx Context) *WebSocketsHandler {
 
 //ServeHTTP implements the http.Handler interface for the WebSocketsHandler
 func (wsh *WebSocketsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	sessionState := SessionState{}
+	sessionState := &SessionState{}
 	_, err := sessions.GetState(r, wsh.ctx.SigningKey, wsh.ctx.SessionStore, sessionState)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error not authorized: %v", err), http.StatusUnauthorized)
@@ -56,5 +57,5 @@ func (wsh *WebSocketsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error unable to upgrade to websocket: %v", err), http.StatusInternalServerError)
 	}
-	wsh.notifier.AddClient(conn, sessionState.User.ID)
+	wsh.ctx.Notifier.AddClient(conn, sessionState.User.ID)
 }

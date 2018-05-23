@@ -3,7 +3,6 @@ package handlers
 import (
 	"github.com/gorilla/websocket"
 	"sync"
-	"encoding/json"
 	"github.com/labstack/gommon/log"
 )
 
@@ -15,7 +14,10 @@ type Notifier struct {
 
 //NewNotifier constructs a new Notifier
 func NewNotifier() *Notifier {
-	return &Notifier{}
+	n := make(map[int64]*websocket.Conn)
+	return &Notifier{
+		clients: n,
+	}
 }
 
 //AddClient adds a new client to the Notifier
@@ -30,31 +32,34 @@ func (n *Notifier) AddClient(client *websocket.Conn, userID int64) {
 func (n *Notifier) processControlMsgs(userID int64) {
 	for {
 		if _, _, err := n.clients[userID].NextReader(); err != nil {
+			n.mx.Lock()
 			n.clients[userID].Close()
 			delete(n.clients, userID)
+			n.mx.Unlock()
 			break
 		}
 	}
 }
 
-func (n *Notifier) start(msg *mqMsg, users []int64) {
-	jsonMsg, err := json.Marshal(msg)
-	if err != nil {
-		log.Errorf("error marshalling mqMsg object: %v", err)
-		return
-	}
-	prepMsg, err := websocket.NewPreparedMessage(websocket.TextMessage, jsonMsg)
+func (n *Notifier) start(msg []byte, users []int64) {
+	prepMsg, err := websocket.NewPreparedMessage(websocket.TextMessage, msg)
 	if err != nil {
 		log.Errorf("error writing a new prepared message: %v", err)
 		return
 	}
 	if len(users) == 0 {
 		for userID, conn := range n.clients {
-			n.writePreppedMsg(prepMsg, userID, conn)
+			_, exists := n.clients[userID]
+			if exists {
+				n.writePreppedMsg(prepMsg, userID, conn)
+			}
 		}
 	} else {
 		for _, userID := range users {
-			n.writePreppedMsg(prepMsg, userID, n.clients[userID])
+			_, exists := n.clients[userID]
+			if exists {
+				n.writePreppedMsg(prepMsg, userID, n.clients[userID])
+			}
 		}
 	}
 }
@@ -62,6 +67,8 @@ func (n *Notifier) start(msg *mqMsg, users []int64) {
 //writePreppedMsg writes a prepared message to the given connection
 func (n *Notifier) writePreppedMsg(msg *websocket.PreparedMessage, userID int64, conn *websocket.Conn) {
 	if err := conn.WritePreparedMessage(msg); err != nil {
+		n.mx.Lock()
 		delete(n.clients, userID)
+		n.mx.Unlock()
 	}
 }

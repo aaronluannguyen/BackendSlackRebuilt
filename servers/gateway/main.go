@@ -97,7 +97,7 @@ func main() {
 	r.Handle("/v1/channels/{channelID}", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
 	r.Handle("/v1/channels/{channelID}/members", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
 	r.Handle("/v1/messages/{messageID}", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
-	r.Handle("/v1/ws", handlers.NewWebSocketsHandler(notifier, hctx))
+	r.Handle("/v1/ws", handlers.NewWebSocketsHandler(hctx))
 
 	corsWrappedMux := handlers.WrappedCORSHandler(r)
 

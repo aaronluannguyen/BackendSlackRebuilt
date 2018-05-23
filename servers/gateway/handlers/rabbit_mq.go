@@ -70,13 +70,13 @@ func (ctx Context) processMessages(msgs <- chan amqp.Delivery) {
 			log.Errorf("error unmarshalling message: %v", err)
 			return
 		}
-		ctx.Notifier.start(msgObj, msgObj.UserIDs)
+		ctx.Notifier.start(byteMsg, msgObj.UserIDs)
 		msg.Ack(false)
 	}
 }
 
 type mqMsg struct {
-	MsgType 		string 			`json:"msgType"`
+	MsgType 		string 			`json:"type"`
 	Msg				interface{}		`json:"msg,omitempty"`
 	UserIDs			[]int64			`json:"userIDs"`
 }
