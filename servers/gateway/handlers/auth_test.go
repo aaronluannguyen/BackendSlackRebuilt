@@ -12,6 +12,10 @@ import (
 	"reflect"
 )
 
+const headerCORS = "Access-Control-Allow-Origin"
+const headerContentType = "Content-Type"
+const contentTypeJSON = "application/json"
+
 func createNormUser() *users.User {
 	nu := &users.NewUser{
 		Email: "test1@uw.edu",

@@ -9,7 +9,13 @@ import (
 	"path"
 	"strconv"
 	"time"
+	"github.com/challenges-aaronluannguyen/servers/gateway/indexes"
+	"strings"
 )
+
+const headerCORS = "Access-Control-Allow-Origin"
+const headerContentType = "Content-Type"
+const contentTypeJSON = "application/json"
 
 //TODO: define HTTP handler functions as described in the
 //assignment description. Remember to use your handler context
@@ -17,6 +23,30 @@ import (
 //access to things like the session store and user store.
 func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
+		case http.MethodGet:
+			currentState := &SessionState{}
+			_, err := sessions.GetState(r, ctx.SigningKey, ctx.SessionStore, currentState)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("unauthenticated user error: %v", err), http.StatusUnauthorized)
+				return
+			}
+			query := r.URL.Query().Get("q")
+			if len(query) < 1 {
+				http.Error(w, "query string parameter required", http.StatusBadRequest)
+				return
+			}
+
+			topTwentyUsers := ctx.Trie.Find(query, 20)
+			var sortedTopUsers *[]*users.User
+			if len(topTwentyUsers) > 0 {
+				sortedTopUsers, err = ctx.UsersStore.SortTopTwentyUsersByUsername(topTwentyUsers)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("error retrieving top users: %v", err), http.StatusInternalServerError)
+					return
+				}
+			}
+			respond(w, contentTypeJSON, sortedTopUsers, http.StatusCreated)
+
 		case http.MethodPost:
 			if err := checkJSONType(w, r); err != nil {
 				http.Error(w, fmt.Sprintf("error: request body must contain json: %v", err), http.StatusUnsupportedMediaType)
@@ -41,6 +71,7 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, fmt.Sprintf("error inserting user into database: %v", err), http.StatusInternalServerError)
 				return
 			}
+			users.AddUserToTrie(ctx.Trie, newToUser)
 			newSessionState := &SessionState{
 				time.Now(),
 				user,
@@ -77,7 +108,7 @@ func (ctx *Context) SpecificUserHandler(w http.ResponseWriter, r *http.Request) 
 			currentState := &SessionState{}
 			_, err := sessions.GetState(r, ctx.SigningKey, ctx.SessionStore, currentState)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("error getting session state: %v", err), http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("error getting session state: %v", err), http.StatusUnauthorized)
 				return
 			}
 			var userID int64
@@ -104,6 +135,7 @@ func (ctx *Context) SpecificUserHandler(w http.ResponseWriter, r *http.Request) 
 				http.Error(w, fmt.Sprintf("error decoding into credentials: %v", err), http.StatusBadRequest)
 				return
 			}
+			oldUser := currentState.User
 			if err := currentState.User.ApplyUpdates(userUpdate); err != nil {
 				http.Error(w, fmt.Sprintf("error with updating user: %s", err), http.StatusBadRequest)
 				return
@@ -112,6 +144,7 @@ func (ctx *Context) SpecificUserHandler(w http.ResponseWriter, r *http.Request) 
 			if err != nil {
 				http.Error(w, fmt.Sprintf("error updating user: %s", err), http.StatusInternalServerError)
 			}
+			TrieHandleUserUpdate(ctx.Trie, oldUser, user)
 			respond(w, contentTypeJSON, user, http.StatusOK)
 
 		default:
@@ -175,5 +208,37 @@ func (ctx *Context) SpecificSessionHandler(w http.ResponseWriter, r *http.Reques
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
+	}
+}
+
+//TrieHandlerUserUpdate removes the user's old first and last names from the trie
+//and updates the trie with the new first and last names
+func TrieHandleUserUpdate(trie *indexes.Trie, oldUser *users.User, updatedUser *users.User) {
+	oldFirstName := strings.Split(strings.ToLower(oldUser.FirstName), " ")
+	RemoveOldFirstOrLast(trie, oldFirstName, oldUser.ID)
+
+	oldLastName := strings.Split(strings.ToLower(oldUser.LastName), " ")
+	RemoveOldFirstOrLast(trie, oldLastName, oldUser.ID)
+
+	newFirstName := strings.Split(strings.ToLower(updatedUser.FirstName), " ")
+	AddUpdatedFirstOrLast(trie, newFirstName, updatedUser.ID)
+
+	newLastName := strings.Split(strings.ToLower(updatedUser.LastName), " ")
+	AddUpdatedFirstOrLast(trie, newLastName, updatedUser.ID)
+}
+
+//RemoveOldFirstOrLast removes either the old first or last names from the trie
+func RemoveOldFirstOrLast(trie *indexes.Trie, names []string, id int64) {
+	for _, name := range names {
+		trimName := strings.TrimSpace(name)
+		trie.Remove(trimName, id)
+	}
+}
+
+//AddUpdatedFirstOrLast adds the new updated first or last names to the trie
+func AddUpdatedFirstOrLast(trie *indexes.Trie, names []string, id int64) {
+	for _, name := range names {
+		trimName := strings.TrimSpace(name)
+		trie.Add(trimName, id)
 	}
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/challenges-aaronluannguyen/servers/gateway/sessions"
 	"github.com/challenges-aaronluannguyen/servers/gateway/models/users"
+	"github.com/challenges-aaronluannguyen/servers/gateway/indexes"
 )
 
 //TODO: define a handler context struct that
@@ -15,4 +16,5 @@ type Context struct {
 	SigningKey		string
 	SessionStore 	sessions.Store
 	UsersStore 		users.Store
+	Trie 			*indexes.Trie
 }

@@ -1,5 +1,6 @@
 import React from "react";
 import {AJAX, ROUTES} from "../constants"
+import SearchResults from "../Components/SearchResults";
 
 export default class MainView extends React.Component {
     constructor(props) {
@@ -8,11 +9,16 @@ export default class MainView extends React.Component {
         this.handleUpdate = this.handleUpdate.bind(this);
         this.handleUpdateInfo = this.handleUpdateInfo.bind(this);
         this.handleCancel = this.handleCancel.bind(this);
+        this.handleUserSearchOnChange = this.handleUserSearchOnChange.bind(this);
+        this.triggerUserSearch = this.triggerUserSearch.bind(this);
         this.state = {
             checkActiveSession: true,
             update: false,
             updateFirst: "",
             updateLast: "",
+            userSearch: "",
+            showSearch: false,
+            usersResults: []
         }
     }
 
@@ -71,7 +77,7 @@ export default class MainView extends React.Component {
                 });
             })
             .catch(error => {
-                this.setState({error: error.text})
+                this.setState({updateError: error.text})
             });
     }
 
@@ -100,8 +106,34 @@ export default class MainView extends React.Component {
             return res
         })
         .catch(
-            err => alert(err)
+            err => this.setState({updateError: err.text})
         )
+    }
+
+    handleUserSearchOnChange(evt) {
+        let val = evt.target.value;
+        this.setState({userSearch: val});
+        if (val.trim().length !== 0) {
+            this.setState({showSearch: true});
+            this.setState({usersResults: []});
+            this.triggerUserSearch(val)
+        } else {
+            this.setState({showSearch: false})
+        }
+    }
+
+    triggerUserSearch(val) {
+        let url = AJAX.userSearch + val;
+        fetch(url, {
+            headers: {
+                'Authorization': window.localStorage.getItem("Authorization")
+            }
+        })
+            .then(response => response.json())
+            .then(json => {
+                this.setState({usersResults: json})
+            })
+            .catch(err => this.setState({error: err.text}))
     }
 
     render() {
@@ -123,6 +155,13 @@ export default class MainView extends React.Component {
                         </div>
                     </div>
                 </div>
+                {
+                    this.state.error ?
+                        <div className="alert alert-danger">
+                            {this.state.error}
+                        </div> :
+                        undefined
+                }
                 {
                     this.state.update ?
                         <div className="container">
@@ -148,9 +187,9 @@ export default class MainView extends React.Component {
                             </form>
                             <div>
                                 {
-                                    this.state.error ?
+                                    this.state.updateError ?
                                         <div className="alert alert-danger">
-                                            {this.state.error}
+                                            {this.state.updateError}
                                         </div> :
                                         undefined
                                 }
@@ -160,6 +199,22 @@ export default class MainView extends React.Component {
                         </div> :
                         undefined
                 }
+                <div className="container">
+                    <div className="input-field">
+                        <input id="first_name" type="text" className="validate"
+                            value={this.state.userSearch}
+                            onChange={evt => this.handleUserSearchOnChange(evt)}
+
+                        />
+                            <label htmlFor="first_name">Search User</label>
+                    </div>
+                    {
+                        this.state.showSearch ?
+                            <SearchResults results={this.state.usersResults}/>
+                            :
+                            undefined
+                    }
+                </div>
             </div>
         );
     }

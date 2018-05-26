@@ -11,6 +11,8 @@ import (
 	"github.com/go-redis/redis"
 	"time"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/challenges-aaronluannguyen/servers/gateway/indexes"
+	"github.com/gorilla/mux"
 )
 
 func reqEnv(name string) string {
@@ -39,6 +41,9 @@ func main() {
 	redisADDR := reqEnv("REDISADDR")
 	dsn := reqEnv("DSN")
 
+	summaryServiceAddrs := reqEnv("SUMMARYADDR")
+	messagesServiceAddrs := reqEnv("MESSAGESADDR")
+
 	addr := os.Getenv("ADDR")
 	if len(addr) == 0 {
 		addr = ":443"
@@ -57,10 +62,15 @@ func main() {
 
 	sessionsStore := sessions.NewRedisStore(redisClient, time.Hour)
 	usersStore := users.NewMySQLStore(db)
+	trie, err := usersStore.LoadExistingUsersToTrie()
+	if err != nil {
+		trie = indexes.NewTrie()
+	}
 	hctx := handlers.Context {
-		sessionKey,
-		sessionsStore,
-		usersStore,
+		SigningKey: sessionKey,
+		SessionStore: sessionsStore,
+		UsersStore: usersStore,
+		Trie: trie,
 	}
 
 	tlsKeyPath := os.Getenv("TLSKEY")
@@ -69,14 +79,18 @@ func main() {
 		log.Fatal("please set TLSKEY and TLSCERT")
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/summary", handlers.SummaryHandler)
-	mux.HandleFunc("/v1/users", hctx.UsersHandler)
-	mux.HandleFunc("/v1/users/", hctx.SpecificUserHandler)
-	mux.HandleFunc("/v1/sessions", hctx.SessionsHandler)
-	mux.HandleFunc("/v1/sessions/", hctx.SpecificSessionHandler)
+	r := mux.NewRouter()
+	r.Handle("/v1/summary", handlers.NewServiceProxy(summaryServiceAddrs, hctx))
+	r.HandleFunc("/v1/users", hctx.UsersHandler)
+	r.HandleFunc("/v1/users/", hctx.SpecificUserHandler)
+	r.HandleFunc("/v1/sessions", hctx.SessionsHandler)
+	r.HandleFunc("/v1/sessions/", hctx.SpecificSessionHandler)
+	r.Handle("/v1/channels", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
+	r.Handle("/v1/channels/{channelID}", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
+	r.Handle("/v1/channels/{channelID}/members", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
+	r.Handle("/v1/messages/{messageID}", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
 
-	corsWrappedMux := handlers.WrappedCORSHandler(mux)
+	corsWrappedMux := handlers.WrappedCORSHandler(r)
 
 	log.Printf("Server is listening at https://%s", addr)
 	log.Fatal(http.ListenAndServeTLS(addr, tlsCertPath, tlsKeyPath, corsWrappedMux))

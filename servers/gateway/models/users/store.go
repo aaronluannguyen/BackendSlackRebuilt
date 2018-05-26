@@ -28,4 +28,8 @@ type Store interface {
 
 	//Delete deletes the user with the given ID
 	Delete(id int64) error
+
+	//SortTopTwentyUsersByUsername queries top twenty users
+	//sorted by username
+	SortTopTwentyUsersByUsername(users []int64) (*[]*User, error)
 }
