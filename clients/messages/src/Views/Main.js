@@ -1,6 +1,11 @@
 import React from "react";
 import {AJAX, ROUTES} from "../constants"
 import SearchResults from "../Components/SearchResults";
+import ChannelMessages from "../Components/ChannelMessages";
+import NewMessage from "../Components/NewMessage";
+import "./Main.css";
+import Channels from "../Components/Channels";
+import * as types from "../wsTypes";
 
 export default class MainView extends React.Component {
     constructor(props) {
@@ -42,6 +47,39 @@ export default class MainView extends React.Component {
                 })
                 .then(() => {
                     this.setState({checkActiveSession: false})
+                }).then(() => {
+                    const websocket = new WebSocket(ROUTES.ws + window.localStorage.getItem("Authorization"))
+                    websocket.onopen = () => {
+                        console.log("connected")
+                    }
+                    websocket.onerror = () => {
+                        console.log("fuck this")
+                    }
+                    websocket.onmessage = (evt) => {
+                        console.log(evt)
+                        const data = JSON.parse(evt.data)
+                        console.log(data.type)
+                        switch (data.type) {
+                            case types.CHANNEL_NEW:
+                                console.log("new channel")
+                                break
+                            case types.CHANNEL_UPDATE:
+                                console.log("update channel")
+                                break
+                            case types.CHANNEL_DELETE:
+                                console.log("delete channel")
+                                break
+                            case types.MESSAGE_NEW:
+                                console.log("new message")
+                                break
+                            case types.MESSAGE_UPDATE:
+                                console.log("update msg")
+                                break
+                            case types.MESSAGE_DELETE:
+                                console.log("delete msg")
+                                break
+                        }
+                    }
                 })
         }
     }
@@ -214,6 +252,16 @@ export default class MainView extends React.Component {
                             :
                             undefined
                     }
+                </div>
+                <div className="container">
+                    <Channels/>
+                    <div id="channel-messages">
+                        <ChannelMessages userInfo={this.state.userInfo} channelMessageSnap={this.state.channelMessageSnap}/>
+                        <div id="bottom-channel-messages" ref={bottomPlace => {this.bottom = bottomPlace;}}/>
+                    </div>
+                    <div>
+                        <NewMessage id="text-input" channelMessageRef={this.state.channelMessageRef} userInfo={this.state.userInfo}/>
+                    </div>
                 </div>
             </div>
         );

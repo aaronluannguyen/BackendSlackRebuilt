@@ -44,6 +44,9 @@ func main() {
 	summaryServiceAddrs := reqEnv("SUMMARYADDR")
 	messagesServiceAddrs := reqEnv("MESSAGESADDR")
 
+	mqAddr := reqEnv("MQADDR")
+	mqName := reqEnv("MQNAME")
+
 	addr := os.Getenv("ADDR")
 	if len(addr) == 0 {
 		addr = ":443"
@@ -66,12 +69,17 @@ func main() {
 	if err != nil {
 		trie = indexes.NewTrie()
 	}
+	notifier := handlers.NewNotifier()
+
 	hctx := handlers.Context {
 		SigningKey: sessionKey,
 		SessionStore: sessionsStore,
 		UsersStore: usersStore,
 		Trie: trie,
+		Notifier: notifier,
 	}
+
+	hctx.StartMQ(mqAddr, mqName)
 
 	tlsKeyPath := os.Getenv("TLSKEY")
 	tlsCertPath := os.Getenv("TLSCERT")
@@ -82,13 +90,14 @@ func main() {
 	r := mux.NewRouter()
 	r.Handle("/v1/summary", handlers.NewServiceProxy(summaryServiceAddrs, hctx))
 	r.HandleFunc("/v1/users", hctx.UsersHandler)
-	r.HandleFunc("/v1/users/", hctx.SpecificUserHandler)
+	r.HandleFunc("/v1/users/{userID}", hctx.SpecificUserHandler)
 	r.HandleFunc("/v1/sessions", hctx.SessionsHandler)
-	r.HandleFunc("/v1/sessions/", hctx.SpecificSessionHandler)
+	r.HandleFunc("/v1/sessions/{currSession}", hctx.SpecificSessionHandler)
 	r.Handle("/v1/channels", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
 	r.Handle("/v1/channels/{channelID}", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
 	r.Handle("/v1/channels/{channelID}/members", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
 	r.Handle("/v1/messages/{messageID}", handlers.NewServiceProxy(messagesServiceAddrs, hctx))
+	r.Handle("/v1/ws", handlers.NewWebSocketsHandler(hctx))
 
 	corsWrappedMux := handlers.WrappedCORSHandler(r)
 

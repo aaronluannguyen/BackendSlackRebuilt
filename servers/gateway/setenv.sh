@@ -9,3 +9,5 @@ export TLSCERT=./tls/fullchain.pem
 export TLSKEY=./tls/privkey.pem
 export SUMMARYADDR=summarymicroservice:80
 export MESSAGESADDR=messagesmicroservice:80
+export MQADDR=api.aaronluannguyen.me:5672
+export MQNAME=aaronluannguyenMQ

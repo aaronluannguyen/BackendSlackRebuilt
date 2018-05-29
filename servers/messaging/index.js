@@ -23,6 +23,35 @@ let db = mysql.createPool({
     password: process.env.MYSQL_ROOT_PASSWORD
 });
 
+let channelMQ;
+let q;
+let mqAddr = process.env.MQADDR;
+let mqURL = 'amqp://' + mqAddr;
+let maxConnRetries = 15;
+let mqConnTries = 0;
+
+let amqp = require('amqplib/callback_api');
+
+let connection = setInterval(connectToMQ, 3000);
+
+function connectToMQ() {
+    if (mqConnTries <= maxConnRetries) {
+        amqp.connect(mqURL, (err, conn) => {
+            if (!err && conn) {
+                conn.createChannel((err, ch) => {
+                    channelMQ = ch;
+                    q = process.env.MQNAME;
+                    channelMQ.assertQueue(q, {durable: false});
+                });
+                console.log("successfully connected to MQ");
+                clearInterval(connection);
+            }
+        });
+    } else {
+        console.log("Error: unable to connect to MQ");
+    }
+}
+
 app.use(express.json());
 
 // Handle Endpoint: /v1/channels
@@ -72,6 +101,8 @@ app.post("/v1/channels", async (req, res, next) => {
         }
         res.status(201);
         res.json(channel);
+        let userIDs = getUserIDs(channel.members);
+        channelSendBodyChannel("channel-new", channel, userIDs);
     } catch (err) {
         next(err);
     }
@@ -96,7 +127,6 @@ app.get("/v1/channels/:channelID", async (req, res, next) => {
 
 app.post("/v1/channels/:channelID", async (req, res, next) => {
     try {
-        if (!validJSON) { return }
         let user = checkUserAuth(req, res);
         if (!user) { return }
         let valid = await verifyUserInChannel(db, user.id, req.params.channelID);
@@ -113,6 +143,9 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
         }
         res.status(201);
         res.json(msg);
+        let channel = await queryChannelMembers(db, req.params.channelID);
+        let userIDs = getUserIDs(channel.members);
+        channelSendBodyMessage("message-new", msg, userIDs);
     } catch (err) {
         next(err);
     }
@@ -145,11 +178,11 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
         if (!checkIfNullEmpty(req.body.description)) {
             newDesc = req.body.description;
         }
-        let timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
+        let timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
         let updated = await updateChannelNameAndDesc(db, newName, newDesc, req.params.channelID, timestamp);
         if (!updated) {
             res.set(contentType, headerTxt);
-            return res.status(400).send("Error: Channel does not exist");
+            return res.status(400).send("Error: Channel did not update");
         }
         let channel = await queryChannelMembers(db, req.params.channelID);
         if (!channel) {
@@ -158,6 +191,8 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
         }
         res.status(201);
         res.json(channel);
+        let userIDs = getUserIDs(channel.members);
+        channelSendBodyChannel("channel-update", channel, userIDs);
     } catch (err) {
         next(err);
     }
@@ -175,6 +210,10 @@ app.delete("/v1/channels/:channelID", async (req, res, next) => {
             res.status(400).send("Bad request: message does not exist");
         }
         res.send("Successfully deleted channel and messages in that channel");
+        let channel = await queryChannelMembers(db, req.params.channelID);
+        let userIDs = getUserIDs(channel.members);
+        let msg = {msgType: "channel-delete", msg: req.params.channelID, userIDs: userIDs};
+        channelMQ.sendToQueue(q, Buffer.from(JSON.stringify(msg)))
     } catch (err) {
         next(err);
     }
@@ -245,6 +284,9 @@ app.patch("/v1/messages/:messageID", async (req, res, next) => {
             return res.status(400).send("Message does not exist");
         }
         res.json(msg);
+        let channel = await queryChannelMembers(db, msg.channelID);
+        let userIDs = getUserIDs(channel.members);
+        channelSendBodyMessage("message-update", msg, userIDs);
     } catch (err) {
         next(err);
     }
@@ -256,6 +298,11 @@ app.delete("/v1/messages/:messageID", async (req, res, next) => {
         if (!user) { return }
         let creator = await checkUserIsMessageCreator(db, user.id, req.params.messageID, res);
         if (!creator) { return }
+        let msg = await queryMessageByID(db, req.params.messageID);
+        if (!msg) {
+            res.set(contentType, headerTxt);
+            return res.status(400).send("Message does not exist");
+        }
         let deleted = await queryDeleteMessage(db, req.params.messageID);
         if (!deleted) {
             res.set(contentType, headerTxt);
@@ -263,6 +310,10 @@ app.delete("/v1/messages/:messageID", async (req, res, next) => {
         }
         res.set(contentType, headerTxt);
         res.send("Successfully deleted message");
+        let channel = await queryChannelMembers(db, msg.channelID);
+        let userIDs = getUserIDs(channel.members);
+        let msgJson = {msgType: "message-delete", msg: req.params.messageID, userIDs: userIDs};
+        channelMQ.sendToQueue(q, Buffer.from(JSON.stringify(msgJson)));
     } catch (err) {
         next(err);
     }
@@ -330,11 +381,6 @@ function checkUserIsCreator(db, userID, channelID, res) {
                 res.set(contentType, headerTxt);
                 res.status(403).send("Error: You are not the creator of this channel");
                 return resolve(false);
-            }
-            if (!rows[0].channelPrivate) {
-                res.set(contentType, headerTxt);
-                res.status(400).send("Bad request: This is a public channel");
-                return resolve(false)
             }
             if (rows[0].channelCreatorUserID === userID) {
                 return resolve(true);
@@ -527,7 +573,7 @@ function checkIfNullEmpty(obj) {
 //updateChannelNameAndDesc returns a promise if successfully updated channel
 function updateChannelNameAndDesc(db, name, desc, channelID, date) {
     return new Promise((resolve, reject) => {
-        db.query(Constant.SQL_UPDATE_CHANNEL_NAME_DESC, [name, desc, channelID, date], (err, results) => {
+        db.query(Constant.SQL_UPDATE_CHANNEL_NAME_DESC, [name, desc, date, channelID], (err, results) => {
             if (err) {
                 reject(err);
             }
@@ -687,4 +733,25 @@ function deleteChannelAndMessages(db, channelID) {
             });
         });
     });
+}
+
+//channelSendBoydChannel sends to the message queue an obj with a channel as the second field
+function channelSendBodyChannel(type, channelObj, userIDs) {
+    let msgJson = {msgType: type, msg: channelObj, userIDs: userIDs};
+    channelMQ.sendToQueue(q, Buffer.from(JSON.stringify(msgJson)));
+}
+
+//channelSendBodyMessage sends to the message queue an obj with a message as the second field
+function channelSendBodyMessage(type, message, userIDs) {
+    let msgJson = {msgType: type, msg: message, userIDs: userIDs};
+    channelMQ.sendToQueue(q, Buffer.from(JSON.stringify(msgJson)))
+}
+
+//getUerIDs returns an array of user ids
+function getUserIDs(users) {
+    let userIDs =[];
+    for (let i = 0; i < users.length; i++) {
+        userIDs.push(users[i].id);
+    }
+    return userIDs;
 }

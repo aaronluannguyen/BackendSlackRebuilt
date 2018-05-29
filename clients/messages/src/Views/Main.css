@@ -1,0 +1,30 @@
+* {
+    box-sizing: border-box;
+}
+
+#main-view {
+    max-width: 1200px;
+    max-height: 1200px;
+}
+
+#header {
+    height: 5vh;
+}
+
+#channel-messages {
+    height: 55vh;
+    overflow-y: auto;
+    margin: 10px 0px;
+}
+
+#channel-button {
+    margin: 5px 5px;
+}
+
+#bottom-channel-messages {
+    margin-bottom: 10px;
+}
+
+#channel-section {
+    margin: 10px 0px;
+}

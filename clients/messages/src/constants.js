@@ -2,7 +2,8 @@ export const ROUTES = {
     signIn: "/",
     signUp: "/signup",
     main: "/channels/:channelName",
-    generalChannel: "/channels/general"
+    generalChannel: "/channels/general",
+    ws: "wss://api.aaronluannguyen.me/v1/ws?auth="
 }
 
 export const AJAX = {
