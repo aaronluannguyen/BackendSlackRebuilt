@@ -189,7 +189,7 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
             res.set(contentType, headerTxt);
             return res.status(500).send("Error retrieving channel members");
         }
-        res.status(201);
+        res.status(200);
         res.json(channel);
         let userIDs = getUserIDs(channel.members);
         channelSendBodyChannel("channel-update", channel, userIDs);
@@ -202,7 +202,7 @@ app.delete("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req, res);
         if (!user) { return }
-        let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, next, res);
+        let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, res);
         if (!creatorStatus) { return }
         let deleted = await deleteChannelAndMessages(db, req.params.channelID);
         res.set(contentType, headerTxt);

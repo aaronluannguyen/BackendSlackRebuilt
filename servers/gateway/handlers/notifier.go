@@ -33,8 +33,10 @@ func (n *Notifier) processControlMsgs(userID int64) {
 	for {
 		if _, _, err := n.clients[userID].NextReader(); err != nil {
 			n.mx.Lock()
-			n.clients[userID].Close()
-			delete(n.clients, userID)
+			if n.clients[userID] != nil {
+				n.clients[userID].Close()
+				delete(n.clients, userID)
+			}
 			n.mx.Unlock()
 			break
 		}

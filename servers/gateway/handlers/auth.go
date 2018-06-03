@@ -41,7 +41,7 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 			if len(topTwentyUsers) > 0 {
 				sortedTopUsers, err = ctx.UsersStore.SortTopTwentyUsersByUsername(topTwentyUsers)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("error retrieving top users: %v", err), http.StatusInternalServerError)
+					http.Error(w, fmt.Sprintf("error retrieving top users: %v", err), http.StatusBadRequest)
 					return
 				}
 			}
