@@ -11,6 +11,7 @@ import (
 	"time"
 	"github.com/challenges-aaronluannguyen/servers/gateway/indexes"
 	"strings"
+	"github.com/nbutton23/zxcvbn-go"
 )
 
 const headerCORS = "Access-Control-Allow-Origin"
@@ -59,6 +60,11 @@ func (ctx *Context) UsersHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			if err := newUser.Validate(); err != nil {
 				http.Error(w, fmt.Sprintf("invalid data for new user: %v", err), http.StatusBadRequest)
+				return
+			}
+			passwordScore := zxcvbn.PasswordStrength(newUser.Password, nil)
+			if passwordScore.Score <= 2 {
+				http.Error(w, fmt.Sprintf("password strength is not safely unguessable"), http.StatusBadRequest)
 				return
 			}
 			newToUser, err := newUser.ToUser()
