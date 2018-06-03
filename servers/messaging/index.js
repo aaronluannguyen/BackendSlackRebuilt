@@ -319,6 +319,36 @@ app.delete("/v1/messages/:messageID", async (req, res, next) => {
     }
 });
 
+// Handle Endpoint: /v1/messages/{messageID}/reactions
+app.post("/v1/messages/:messageID/reactions", async (req, res, next) => {
+    try {
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
+        if (!req.body.reaction) {
+            res.set(contentType, headerTxt);
+            return res.status(400).send("Bad request: Must provide a reaction");
+        }
+        let msg = await queryMessageByID(db, req.params.messageID);
+        if (!msg) {
+            res.set(contentType, headerTxt);
+            return res.status(400).send("Message does not exist");
+        }
+        let result = await insertMessageReaction(db, req.params.messageID, user.id, req.body.reaction, res);
+        if (!result) {
+            res.set(contentType, headerTxt);
+            return res.status(500).send("server error: adding reaction to message");
+        }
+        let messageReactions = await getMessageReactions(db, req.params.messageID);
+        msg.reactions = messageReactions;
+        res.json(msg);
+        let channel = await queryChannelMembers(db, msg.channelID);
+        let userIDs = getUserIDs(channel.members);
+        channelSendBodyMessage("message-reaction", msg, userIDs);
+    } catch (err) {
+        next(err);
+    }
+});
+
 app.use((err, req, res, next) => {
     if (err.stack) {
         console.error(err.stack);
@@ -658,16 +688,27 @@ function queryTop100Msgs(db, channelID) {
             if (err) {
                 reject(err);
             }
-            if (rows.length === 0) {
+            if (!rows || rows.length === 0) {
                 return resolve(messages);
             }
-            rows.forEach((row) => {
-                let creator = {id: row.id, userName: row.username, firstName: row.firstName,
-                    lastName: row.lastName, photoURL: row.photoURL};
-                let message = new Message(row.mMessageID, row.mChannelID, row.mBody,
-                    row.mCreatedAt, creator, row.mEditedAt);
+            console.log(rows);
+            for (let i = 0; i < rows.length; i++) {
+                let msgReactions = [];
+                let currMsgID = rows[i].mMessageID;
+                let creator = {id: rows[i].id, userName: rows[i].username, firstName: rows[i].firstName,
+                    lastName: rows[i].lastName, photoURL: rows[i].photoURL};
+                let message = new Message(rows[i].mMessageID, rows[i].mChannelID, rows[i].mBody,
+                    rows[i].mCreatedAt, creator, rows[i].mEditedAt);
+                while (rows[i].mMessageID === currMsgID) {
+                    msgReactions.push({username: rows[i].username, reaction: rows[i].mrReactionCode});
+                    i++;
+                    if (i === rows.length) {
+                        break
+                    }
+                }
+                message.reactions = msgReactions;
                 messages.push(message);
-            });
+            }
             resolve(messages);
         });
     });
@@ -754,4 +795,41 @@ function getUserIDs(users) {
         userIDs.push(users[i].id);
     }
     return userIDs;
+}
+
+//insertMessageReaction inserts the reaction corresponding with the appropriate message.
+//accounts for duplicate entries and will update status code accordingly.
+function insertMessageReaction(db, messageID, userID, reaction, res) {
+    return new Promise((resolve, reject) => {
+        db.query(Constant.SQL_INSERT_INTO_MESSAGE_REACTION, [messageID, userID, reaction], (err, results) => {
+            res.status(201);
+            if (err) {
+                if (err.message.startsWith(duplicateError)) {
+                    res.status(200);
+                } else {
+                    reject(err);
+                }
+            }
+            return resolve(true)
+        });
+    });
+}
+
+//returns an array of reactions associated with that message
+async function getMessageReactions(db, messageID) {
+    return new Promise((resolve, reject) => {
+        let reactions = [];
+        db.query(Constant.SQL_GET_MESSAGE_WITH_REACTIONS, [messageID], (err, rows) => {
+            if (err) {
+                reject(err);
+            }
+            if (!rows || rows.length === 0) {
+                return resolve(reactions)
+            }
+            rows.forEach((row) => {
+                reactions.push({username: row.username, reaction: row.mrReactionCode});
+            });
+            return resolve(reactions)
+        });
+    });
 }
