@@ -51,6 +51,14 @@ create table if not exists message_reaction (
   unique key(mrMessageID, mrUserID, mrReactionCode)
 );
 
+create table if not exists star_message (
+  smUserID int not null,
+  smMessageID int not null,
+  foreign key(smUserID) references users(id),
+  foreign key(smMessageID) references messages(mMessageID),
+  primary key (smUserID, smMessageID)
+);
+
 insert into users (email, passHash, username, firstName, lastName, photoURL)
 values ("admin@system.com", "\0", "system", "", "", "");
 
