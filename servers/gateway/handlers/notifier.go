@@ -14,7 +14,7 @@ type Notifier struct {
 
 //NewNotifier constructs a new Notifier
 func NewNotifier() *Notifier {
-	n := make(map[int64]*websocket.Conn)
+	n := make(map[int64][]*websocket.Conn)
 	return &Notifier{
 		clients: n,
 	}
@@ -46,16 +46,6 @@ func (n *Notifier) processControlMsgs(userID int64) {
 				break
 			}
 		}
-		// OG code
-		//if _, _, err := n.clients[userID].NextReader(); err != nil {
-		//	n.mx.Lock()
-		//	if n.clients[userID] != nil {
-		//		n.clients[userID].Close()
-		//		delete(n.clients, userID)
-		//	}
-		//	n.mx.Unlock()
-		//	break
-		//}
 	}
 }
 
