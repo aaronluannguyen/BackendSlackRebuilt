@@ -12,6 +12,8 @@ const headerTxt = "text/plain";
 const mysql = require("mysql");
 const express = require("express");
 const app = express();
+let formidable = require("formidable");
+let fs = require("fs");
 
 const addr = process.env.ADDR || ":80";
 const [host, port] = addr.split(":");
@@ -134,8 +136,28 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
             res.set(contentType, headerTxt);
             return res.status(403).send("Forbidden request. Not a part of this channel")
         }
+        let newMessageID;
         let dateNow = new Date().toISOString().slice(0, 19).replace('T', ' ');
-        let newMessageID = await queryPostMessage(db, req.params.channelID, req.body.body, dateNow, user.id);
+        if (req.is("multipart/form-data")) {
+            let newPath = "";
+            let form = new formidable.IncomingForm();
+            form.parse(req, function(err, fields, files) {
+               let oldPath = files.filetoupload.path;
+               newPath = "./messagemedia/" + user.id + "/" + files.filetoupload.name;
+               while (fs.existsSync(newPath)) {
+                   newPath = "./messagemedia/" + user.username + "/" + getRandomInt(9999) + files.filetoupload.name;
+               }
+               fs.rename(oldPath, newPath, function (err) {
+                   if (err) {
+                       next(err);
+                   }
+               });
+            });
+            newMessageID = await queryPostMessage(db, req.params.channelID, newPath, dateNow, user.id);
+
+        } else {
+            newMessageID = await queryPostMessage(db, req.params.channelID, req.body.body, dateNow, user.id);
+        }
         let msg = await queryMessageByID(db, newMessageID);
         if (!msg) {
             res.set(contentType, headerTxt);
@@ -150,6 +172,10 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
         next(err);
     }
 });
+
+function getRandomInt(max) {
+    return Math.floor(Math.random() * Math.floor(max));
+}
 
 app.patch("/v1/channels/:channelID", async (req, res, next) => {
     try {
