@@ -349,6 +349,108 @@ app.post("/v1/messages/:messageID/reactions", async (req, res, next) => {
     }
 });
 
+// Handle Endpoint: /v1/me/starred/messages
+app.post("/v1/me/starred/messages", async (req, res, next) => {
+    try {
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
+        if (!req.body.messageID) {
+            res.set(contentType, headerTxt);
+            return res.status(400).send("Bad request: Must provide a message to star");
+        }
+        let success = await postStarredMessage(db, user.id, req.body.messageID);
+        if (success) {
+            let msg = queryMessageByID(db, req.body.messageID);
+            channelSendBodyMessage("message-star", msg, user.id);
+            res.set(contentType, headerTxt);
+            return res.status(201).send("Successfully starred message");
+        }
+    } catch (err) {
+        next(err);
+    }
+});
+
+function postStarredMessage(db, userID, messageID) {
+    return new Promise((resolve, reject) => {
+        db.query(Constant.SQL_POST_STAR_MESSAGE, [userID, messageID], (err, results) => {
+            if (err) {
+                if (err.message.startsWith(duplicateError)) {
+                    res.status(200);
+                } else {
+                    reject(err);
+                }
+            }
+            return resolve(true);
+        });
+    });
+}
+
+app.get("/v1/me/starred/messages", async (req, res, next) => {
+    try {
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
+        let messages = await getStarredMessages(db, user.id);
+        res.json(messages);
+    } catch (err) {
+        next(err);
+    }
+});
+
+function getStarredMessages(db, userID) {
+    return new Promise((resolve, reject) => {
+        let messages = [];
+        db.query(Constant.SQL_GET_STAR_MESSAGES, [userID], (err, rows) => {
+            if (err) {
+                reject(err);
+            }
+            if (!rows || rows.length === 0) {
+                return resolve([]);
+            }
+            rows.forEach((row) => {
+                let creator = {id: row.id, userName: row.username, firstName: row.firstName,
+                    lastName: row.lastName, photoURL: row.photoURL};
+                let message = new Message(row.mMessageID, row.mChannelID, row.mBody,
+                    row.mCreatedAt, creator, row.mEditedAt);
+                messages.push(message);
+                let resultMsgs = [];
+                messages.forEach((message) => {
+                    resultMsgs.push(message);
+                });
+                resolve(resultMsgs);
+            });
+        });
+    });
+}
+
+app.delete("/v1/me/starred/messages/:messageID", async (req, res, next) => {
+    try {
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
+        let success = await deleteStarredMessage(db, user.id, req.params.messageID);
+        if (success) {
+            channelSendBodyMessage("message-unstar", req.params.messageID, user.id);
+            res.set(contentType, headerTxt);
+            return res.status(201).send("Successfully unstarred message");
+        }
+    } catch (err) {
+        next(err);
+    }
+});
+
+function deleteStarredMessage(db, userID, messageID) {
+    return new Promise((resolve, reject) => {
+        db.query(Constant.SQL_DELETE_STAR_MESSAGE, [userID, messageID], (err, results) => {
+            if (err) {
+                reject(err);
+            }
+            if (results.affectedRows === 0) {
+                return resolve(false);
+            }
+            return resolve(true);
+        });
+    });
+}
+
 app.use((err, req, res, next) => {
     if (err.stack) {
         console.error(err.stack);
@@ -683,33 +785,32 @@ function queryMessageByID(db, msgID) {
 //queryTop100Msgs returns a promise containing the most recent 100 messages in a channel
 function queryTop100Msgs(db, channelID) {
     return new Promise((resolve, reject) => {
-        let messages = [];
+        let messages = {};
         db.query(Constant.SQL_TOP_100_MESSAGES, [channelID], (err, rows) => {
             if (err) {
                 reject(err);
             }
             if (!rows || rows.length === 0) {
-                return resolve(messages);
+                return resolve([]);
             }
-            console.log(rows);
-            for (let i = 0; i < rows.length; i++) {
-                let msgReactions = [];
-                let currMsgID = rows[i].mMessageID;
-                let creator = {id: rows[i].id, userName: rows[i].username, firstName: rows[i].firstName,
-                    lastName: rows[i].lastName, photoURL: rows[i].photoURL};
-                let message = new Message(rows[i].mMessageID, rows[i].mChannelID, rows[i].mBody,
-                    rows[i].mCreatedAt, creator, rows[i].mEditedAt);
-                while (rows[i].mMessageID === currMsgID) {
-                    msgReactions.push({username: rows[i].username, reaction: rows[i].mrReactionCode});
-                    i++;
-                    if (i === rows.length) {
-                        break
-                    }
+            rows.forEach((row) => {
+                let msg = messages[row.mMessageID];
+                if (!msg) {
+                    let creator = {id: row.id, userName: row.username, firstName: row.firstName,
+                        lastName: row.lastName, photoURL: row.photoURL};
+                    let message = new Message(row.mMessageID, row.mChannelID, row.mBody,
+                        row.mCreatedAt, creator, row.mEditedAt);
+                    message.reactions.push({username: row.Rusername, reaction: row.mrReactionCode});
+                    messages[row.mMessageID] = message;
+                } else {
+                    message.reactions.push({username: row.MRusername, reaction: row.mrReactionCode});
                 }
-                message.reactions = msgReactions;
-                messages.push(message);
-            }
-            resolve(messages);
+                let resultMsgs = [];
+                messages.forEach((message) => {
+                    resultMsgs.push(message);
+                });
+                resolve(resultMsgs);
+            });
         });
     });
 }
