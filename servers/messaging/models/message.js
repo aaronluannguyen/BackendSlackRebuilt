@@ -15,5 +15,6 @@ module.exports = class message {
         this.createdAt = createdAt;
         this.creator = creator;
         this.editedAt = editedAt;
+        this.reactions = [];
     }
 };

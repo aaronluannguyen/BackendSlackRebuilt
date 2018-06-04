@@ -25,6 +25,11 @@ const message_createdAt = "mCreatedAt";
 const message_creatorID = "mCreatorUserID";
 const message_editedAt = "mEditedAt";
 
+// message reaction table
+const mrMessageID = "mrMessageID";
+const mrUserID = "mrUserID";
+const mrReactionCode = "mrReactionCode";
+
 module.exports = {
     // SQL Commands
     SQL_SELECT_CHANNEL_BY_ID :                   "select * from channels where " + channel_id + "=?",
@@ -72,12 +77,18 @@ module.exports = {
                                                  " join channel_user cu on cu." + cu_channelID + " = c." + channel_id +
                                                  " where c." + channel_id + "=?",
 
-    SQL_TOP_100_MESSAGES :                       "select * from channels c" +
-                                                 " join messages m on m. " + message_chanID + " = c." + channel_id +
-                                                 " join users u on u." + user_id  + " = m." + message_creatorID +
-                                                 " where c." + channel_id + " = ?" +
-                                                 " order by m." + message_createdAt + " desc" +
-                                                 " limit 100",
+
+    SQL_TOP_100_MESSAGES:                        "select *, u1.id as id, u1.username as username, u1.firstName as firstName, u1.lastName as lastName, u1.photoURL as photoURL, u2.username as MRusername" +
+                                                 " from (" +
+                                                        "select * from messages m" +
+                                                        " where m." + message_chanID + "=?" +
+                                                        " order by m." + message_createdAt + " desc" +
+                                                        " limit 100" +
+                                                 ") as msg, users u1, users u2, message_reaction mr" +
+                                                 " where msg." + message_id + " = mr." + mrMessageID +
+                                                 " and u1." + user_id + " = msg." + message_creatorID +
+                                                 " and u2." + user_id + " = mr." + mrUserID +
+                                                 " order by msg." + message_createdAt,
 
     SQL_POST_MESSAGE :                           "insert into messages (" + message_chanID + ", " + message_body + ", " + message_createdAt +
                                                  ", " + message_creatorID + ", " + message_editedAt + ") values (?,?,?,?,?)",
@@ -89,4 +100,19 @@ module.exports = {
     SQL_UPDATE_MESSAGE:                          "update messages set " + message_body + "=?, " + message_editedAt + "=? where " + message_id + "=?",
 
     SQL_DELETE_MESSAGE_BY_ID :                   "delete from messages where " + message_id + "=?",
+
+    SQL_INSERT_INTO_MESSAGE_REACTION :           "insert into message_reaction (" + mrMessageID + ", " + mrUserID + ", " +  mrReactionCode + ") values (?,?,?)",
+
+    SQL_GET_MESSAGE_WITH_REACTIONS :             "select * from message_reaction mr" +
+                                                 " join users u on u." + user_id + "= mr." + mrUserID +
+                                                 " where mr." + mrMessageID + "=?",
+
+    SQL_POST_STAR_MESSAGE :                      "insert into star_message (smUserID, smMessageID) values(?,?)",
+
+    SQL_GET_STAR_MESSAGES :                      "select * from star_message sm" +
+                                                 " join users u on u." + user_id + " = sm.smUserID" +
+                                                 " where sm.smUserID = ?",
+
+    SQL_DELETE_STAR_MESSAGE :                    "delete from star_message" +
+                                                 " where smUserID=? and smMessageID=?",
 };

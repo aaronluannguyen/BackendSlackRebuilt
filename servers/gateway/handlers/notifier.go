@@ -8,13 +8,13 @@ import (
 
 //Notifier is an object that handles WebSocket notifications
 type Notifier struct {
-	clients map[int64]*websocket.Conn
+	clients map[int64][]*websocket.Conn
 	mx sync.RWMutex
 }
 
 //NewNotifier constructs a new Notifier
 func NewNotifier() *Notifier {
-	n := make(map[int64]*websocket.Conn)
+	n := make(map[int64][]*websocket.Conn)
 	return &Notifier{
 		clients: n,
 	}
@@ -25,18 +25,26 @@ func (n *Notifier) AddClient(client *websocket.Conn, userID int64) {
 	n.mx.Lock()
 	defer n.mx.Unlock()
 
-	n.clients[userID] = client
+	n.clients[userID] = append(n.clients[userID], client)
 	go n.processControlMsgs(userID)
 }
 
 func (n *Notifier) processControlMsgs(userID int64) {
 	for {
-		if _, _, err := n.clients[userID].NextReader(); err != nil {
-			n.mx.Lock()
-			n.clients[userID].Close()
-			delete(n.clients, userID)
-			n.mx.Unlock()
-			break
+		for i, webConn := range n.clients[userID] {
+			if _, _, err := webConn.NextReader(); err != nil {
+				n.mx.Lock()
+				if webConn != nil {
+					webConn.Close()
+					if len(n.clients[userID]) == 1 {
+						delete(n.clients, userID)
+					} else {
+						n.clients[userID] = append(n.clients[userID][:i], n.clients[userID][i + 1:]...)
+					}
+				}
+				n.mx.Unlock()
+				break
+			}
 		}
 	}
 }
@@ -48,17 +56,21 @@ func (n *Notifier) start(msg []byte, users []int64) {
 		return
 	}
 	if len(users) == 0 {
-		for userID, conn := range n.clients {
+		for userID := range n.clients {
 			_, exists := n.clients[userID]
 			if exists {
-				n.writePreppedMsg(prepMsg, userID, conn)
+				for _, webConn := range n.clients[userID] {
+					n.writePreppedMsg(prepMsg, userID, webConn)
+				}
 			}
 		}
 	} else {
 		for _, userID := range users {
 			_, exists := n.clients[userID]
 			if exists {
-				n.writePreppedMsg(prepMsg, userID, n.clients[userID])
+				for _, webConn := range n.clients[userID] {
+					n.writePreppedMsg(prepMsg, userID, webConn)
+				}
 			}
 		}
 	}

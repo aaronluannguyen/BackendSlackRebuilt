@@ -41,6 +41,24 @@ create table if not exists messages (
   mEditedAt datetime not null
 );
 
+create table if not exists message_reaction (
+  mrID int primary key auto_increment not null,
+  mrMessageID int not null,
+  mrUserID int not null,
+  mrReactionCode varchar(255) not null,
+  foreign key(mrMessageID) references messages(mMessageID),
+  foreign key(mrUserID) references users(id),
+  unique key(mrMessageID, mrUserID, mrReactionCode)
+);
+
+create table if not exists star_message (
+  smUserID int not null,
+  smMessageID int not null,
+  foreign key(smUserID) references users(id),
+  foreign key(smMessageID) references messages(mMessageID),
+  primary key (smUserID, smMessageID)
+);
+
 insert into users (email, passHash, username, firstName, lastName, photoURL)
 values ("admin@system.com", "\0", "system", "", "", "");
 

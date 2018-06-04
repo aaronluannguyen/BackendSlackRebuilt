@@ -12,6 +12,8 @@ const headerTxt = "text/plain";
 const mysql = require("mysql");
 const express = require("express");
 const app = express();
+let formidable = require("formidable");
+let fs = require("fs");
 
 const addr = process.env.ADDR || ":80";
 const [host, port] = addr.split(":");
@@ -134,8 +136,28 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
             res.set(contentType, headerTxt);
             return res.status(403).send("Forbidden request. Not a part of this channel")
         }
+        let newMessageID;
         let dateNow = new Date().toISOString().slice(0, 19).replace('T', ' ');
-        let newMessageID = await queryPostMessage(db, req.params.channelID, req.body.body, dateNow, user.id);
+        if (req.is("multipart/form-data")) {
+            let newPath = "";
+            let form = new formidable.IncomingForm();
+            form.parse(req, function(err, fields, files) {
+               let oldPath = files.filetoupload.path;
+               newPath = "./messagemedia/" + user.id + "/" + files.filetoupload.name;
+               while (fs.existsSync(newPath)) {
+                   newPath = "./messagemedia/" + user.username + "/" + getRandomInt(9999) + files.filetoupload.name;
+               }
+               fs.rename(oldPath, newPath, function (err) {
+                   if (err) {
+                       next(err);
+                   }
+               });
+            });
+            newMessageID = await queryPostMessage(db, req.params.channelID, newPath, dateNow, user.id);
+
+        } else {
+            newMessageID = await queryPostMessage(db, req.params.channelID, req.body.body, dateNow, user.id);
+        }
         let msg = await queryMessageByID(db, newMessageID);
         if (!msg) {
             res.set(contentType, headerTxt);
@@ -150,6 +172,10 @@ app.post("/v1/channels/:channelID", async (req, res, next) => {
         next(err);
     }
 });
+
+function getRandomInt(max) {
+    return Math.floor(Math.random() * Math.floor(max));
+}
 
 app.patch("/v1/channels/:channelID", async (req, res, next) => {
     try {
@@ -189,7 +215,7 @@ app.patch("/v1/channels/:channelID", async (req, res, next) => {
             res.set(contentType, headerTxt);
             return res.status(500).send("Error retrieving channel members");
         }
-        res.status(201);
+        res.status(200);
         res.json(channel);
         let userIDs = getUserIDs(channel.members);
         channelSendBodyChannel("channel-update", channel, userIDs);
@@ -202,7 +228,7 @@ app.delete("/v1/channels/:channelID", async (req, res, next) => {
     try {
         let user = checkUserAuth(req, res);
         if (!user) { return }
-        let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, next, res);
+        let creatorStatus = await checkUserIsCreator(db, user.id, req.params.channelID, res);
         if (!creatorStatus) { return }
         let deleted = await deleteChannelAndMessages(db, req.params.channelID);
         res.set(contentType, headerTxt);
@@ -318,6 +344,138 @@ app.delete("/v1/messages/:messageID", async (req, res, next) => {
         next(err);
     }
 });
+
+// Handle Endpoint: /v1/messages/{messageID}/reactions
+app.post("/v1/messages/:messageID/reactions", async (req, res, next) => {
+    try {
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
+        if (!req.body.reaction) {
+            res.set(contentType, headerTxt);
+            return res.status(400).send("Bad request: Must provide a reaction");
+        }
+        let msg = await queryMessageByID(db, req.params.messageID);
+        if (!msg) {
+            res.set(contentType, headerTxt);
+            return res.status(400).send("Message does not exist");
+        }
+        let result = await insertMessageReaction(db, req.params.messageID, user.id, req.body.reaction, res);
+        if (!result) {
+            res.set(contentType, headerTxt);
+            return res.status(500).send("server error: adding reaction to message");
+        }
+        let messageReactions = await getMessageReactions(db, req.params.messageID);
+        msg.reactions = messageReactions;
+        res.json(msg);
+        let channel = await queryChannelMembers(db, msg.channelID);
+        let userIDs = getUserIDs(channel.members);
+        channelSendBodyMessage("message-reaction", msg, userIDs);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// Handle Endpoint: /v1/me/starred/messages
+app.post("/v1/me/starred/messages", async (req, res, next) => {
+    try {
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
+        if (!req.body.messageID) {
+            res.set(contentType, headerTxt);
+            return res.status(400).send("Bad request: Must provide a message to star");
+        }
+        let success = await postStarredMessage(db, user.id, req.body.messageID);
+        if (success) {
+            let msg = queryMessageByID(db, req.body.messageID);
+            channelSendBodyMessage("message-star", msg, user.id);
+            res.set(contentType, headerTxt);
+            return res.status(201).send("Successfully starred message");
+        }
+    } catch (err) {
+        next(err);
+    }
+});
+
+function postStarredMessage(db, userID, messageID) {
+    return new Promise((resolve, reject) => {
+        db.query(Constant.SQL_POST_STAR_MESSAGE, [userID, messageID], (err, results) => {
+            if (err) {
+                if (err.message.startsWith(duplicateError)) {
+                    res.status(200);
+                } else {
+                    reject(err);
+                }
+            }
+            return resolve(true);
+        });
+    });
+}
+
+app.get("/v1/me/starred/messages", async (req, res, next) => {
+    try {
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
+        let messages = await getStarredMessages(db, user.id);
+        res.json(messages);
+    } catch (err) {
+        next(err);
+    }
+});
+
+function getStarredMessages(db, userID) {
+    return new Promise((resolve, reject) => {
+        let messages = [];
+        db.query(Constant.SQL_GET_STAR_MESSAGES, [userID], (err, rows) => {
+            if (err) {
+                reject(err);
+            }
+            if (!rows || rows.length === 0) {
+                return resolve([]);
+            }
+            rows.forEach((row) => {
+                let creator = {id: row.id, userName: row.username, firstName: row.firstName,
+                    lastName: row.lastName, photoURL: row.photoURL};
+                let message = new Message(row.mMessageID, row.mChannelID, row.mBody,
+                    row.mCreatedAt, creator, row.mEditedAt);
+                messages.push(message);
+                let resultMsgs = [];
+                messages.forEach((message) => {
+                    resultMsgs.push(message);
+                });
+                resolve(resultMsgs);
+            });
+        });
+    });
+}
+
+app.delete("/v1/me/starred/messages/:messageID", async (req, res, next) => {
+    try {
+        let user = checkUserAuth(req, res);
+        if (!user) { return }
+        let success = await deleteStarredMessage(db, user.id, req.params.messageID);
+        if (success) {
+            channelSendBodyMessage("message-unstar", req.params.messageID, user.id);
+            res.set(contentType, headerTxt);
+            return res.status(201).send("Successfully unstarred message");
+        }
+    } catch (err) {
+        next(err);
+    }
+});
+
+function deleteStarredMessage(db, userID, messageID) {
+    return new Promise((resolve, reject) => {
+        db.query(Constant.SQL_DELETE_STAR_MESSAGE, [userID, messageID], (err, results) => {
+            if (err) {
+                reject(err);
+            }
+            if (results.affectedRows === 0) {
+                return resolve(false);
+            }
+            return resolve(true);
+        });
+    });
+}
 
 app.use((err, req, res, next) => {
     if (err.stack) {
@@ -653,22 +811,32 @@ function queryMessageByID(db, msgID) {
 //queryTop100Msgs returns a promise containing the most recent 100 messages in a channel
 function queryTop100Msgs(db, channelID) {
     return new Promise((resolve, reject) => {
-        let messages = [];
+        let messages = {};
         db.query(Constant.SQL_TOP_100_MESSAGES, [channelID], (err, rows) => {
             if (err) {
                 reject(err);
             }
-            if (rows.length === 0) {
-                return resolve(messages);
+            if (!rows || rows.length === 0) {
+                return resolve([]);
             }
             rows.forEach((row) => {
-                let creator = {id: row.id, userName: row.username, firstName: row.firstName,
-                    lastName: row.lastName, photoURL: row.photoURL};
-                let message = new Message(row.mMessageID, row.mChannelID, row.mBody,
-                    row.mCreatedAt, creator, row.mEditedAt);
-                messages.push(message);
+                let msg = messages[row.mMessageID];
+                if (!msg) {
+                    let creator = {id: row.id, userName: row.username, firstName: row.firstName,
+                        lastName: row.lastName, photoURL: row.photoURL};
+                    let message = new Message(row.mMessageID, row.mChannelID, row.mBody,
+                        row.mCreatedAt, creator, row.mEditedAt);
+                    message.reactions.push({username: row.Rusername, reaction: row.mrReactionCode});
+                    messages[row.mMessageID] = message;
+                } else {
+                    message.reactions.push({username: row.MRusername, reaction: row.mrReactionCode});
+                }
+                let resultMsgs = [];
+                messages.forEach((message) => {
+                    resultMsgs.push(message);
+                });
+                resolve(resultMsgs);
             });
-            resolve(messages);
         });
     });
 }
@@ -754,4 +922,41 @@ function getUserIDs(users) {
         userIDs.push(users[i].id);
     }
     return userIDs;
+}
+
+//insertMessageReaction inserts the reaction corresponding with the appropriate message.
+//accounts for duplicate entries and will update status code accordingly.
+function insertMessageReaction(db, messageID, userID, reaction, res) {
+    return new Promise((resolve, reject) => {
+        db.query(Constant.SQL_INSERT_INTO_MESSAGE_REACTION, [messageID, userID, reaction], (err, results) => {
+            res.status(201);
+            if (err) {
+                if (err.message.startsWith(duplicateError)) {
+                    res.status(200);
+                } else {
+                    reject(err);
+                }
+            }
+            return resolve(true)
+        });
+    });
+}
+
+//returns an array of reactions associated with that message
+async function getMessageReactions(db, messageID) {
+    return new Promise((resolve, reject) => {
+        let reactions = [];
+        db.query(Constant.SQL_GET_MESSAGE_WITH_REACTIONS, [messageID], (err, rows) => {
+            if (err) {
+                reject(err);
+            }
+            if (!rows || rows.length === 0) {
+                return resolve(reactions)
+            }
+            rows.forEach((row) => {
+                reactions.push({username: row.username, reaction: row.mrReactionCode});
+            });
+            return resolve(reactions)
+        });
+    });
 }
